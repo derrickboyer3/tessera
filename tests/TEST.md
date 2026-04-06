@@ -70,15 +70,19 @@ not application code.
 
 ## Coverage Targets
 
-| File                          | Target | Notes                            |
-|-------------------------------|--------|----------------------------------|
-| circuit.py                    | 100%   |                                  |
-| instruction.py                | 100%   |                                  |
-| gate_library.py               | 100%   |                                  |
-| converters.py                 | 100%   |                                  |
-| pass_manager.py               | 100%   |                                  |
-| passes/identity_pass.py       | 100%   |                                  |
-| transpiler_pass.py            | 89%    | Abstract method miss is expected |
+| File                                      | Target | Notes                            |
+|-------------------------------------------|--------|----------------------------------|
+| circuit.py                                | 100%   |                                  |
+| instruction.py                            | 100%   |                                  |
+| gate_library.py                           | 100%   |                                  |
+| converters.py                             | 100%   |                                  |
+| pass_manager.py                           | 100%   |                                  |
+| passes/identity_pass.py                   | 100%   |                                  |
+| transpiler_pass.py                        | 89%    | Abstract method miss is expected |
+| backends/basis_gate_sets.py               | 100%   |                                  |
+| backends/decomposition_maps.py            | 100%   |                                  |
+| passes/basis_translation_pass.py          | 100%   |                                  |
+| transpiler.py                             | 100%   |                                  |
 
 ---
 
