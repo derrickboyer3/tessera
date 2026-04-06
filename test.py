@@ -8,14 +8,52 @@ from qiskit import QuantumCircuit
 from converters import from_qiskit, to_qiskit
 from pass_manager import TesseraPassManager
 from passes.identity_pass import IdentityPass
+from transpiler import TesseraTranspiler
+import numpy as np
+pi = np.pi
+import time
 
 print('Imports done.')
 
+'''
 qc = QuantumCircuit(3, 3)
 qc.h(0)
 qc.cx(0, 2)
 qc.h(1)
 qc.measure([0, 1, 2], [0, 1, 2])
+'''
+
+qc = QuantumCircuit(4, 4)
+
+# Single qubit no-param gates
+qc.h(0)
+qc.x(1)
+qc.y(2)
+qc.z(3)
+qc.s(0)
+qc.sdg(1)
+qc.t(2)
+qc.tdg(3)
+qc.sx(0)
+
+# Single qubit parameterized gates
+qc.rx(np.pi / 3, 1)
+qc.ry(np.pi / 4, 2)
+qc.rz(np.pi / 6, 3)
+qc.p(np.pi / 2, 0)
+
+# Two qubit gates
+qc.cx(0, 1)
+qc.cz(1, 2)
+qc.cy(2, 3)
+qc.swap(0, 3)
+qc.cp(np.pi / 4, 0, 1)
+
+# Three qubit
+qc.ccx(0, 1, 2)
+
+# Measurements
+qc.measure([0, 1, 2, 3], [0, 1, 2, 3])
 
 tessera_circuit = from_qiskit(qc)
 print(f"Successfully converted Qiskit Quantum Circuit to Tessera Quantum Circuit: {tessera_circuit}")
@@ -30,3 +68,11 @@ result = manager.run(tessera_circuit, before=log_before, after=log_after)
 
 qiskit_circuit = to_qiskit(tessera_circuit)
 print(f"Successfully converted Tessera Quantum Circuit to Qiskit Quantum Circuit:\n{qiskit_circuit}")
+
+backend = "IBM"
+transpiler = TesseraTranspiler(qiskit_circuit, backend)
+start = time.perf_counter()
+translated_circuit = transpiler.execute()
+end = time.perf_counter()
+elapsed = end - start
+print(f"Successfully transpiled Qiskit Quantum Circuit for {backend} backend using Tessera Transpiler:\n{translated_circuit}\nTime: {elapsed}s")
