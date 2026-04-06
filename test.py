@@ -70,7 +70,7 @@ qiskit_circuit = to_qiskit(tessera_circuit)
 print(f"Successfully converted Tessera Quantum Circuit to Qiskit Quantum Circuit:\n{qiskit_circuit}")
 
 backend = "IBM"
-transpiler = TesseraTranspiler(qiskit_circuit, backend)
+transpiler = TesseraTranspiler(qiskit_circuit, backend, debug_on=True)
 start = time.perf_counter()
 translated_circuit = transpiler.execute()
 end = time.perf_counter()

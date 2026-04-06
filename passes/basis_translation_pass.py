@@ -1,9 +1,22 @@
 '''
     Basis Translation Pass
     ----------------------
-    A first step pass to take a circuit and translate each gate into it's basis state (backend specific; default = IBM).
-    This pass takes in a TesseraCircuit and goes through each instruction to convert it, so that the new circuit is formatted
-    appropriately depending on where it is to be run.
+    Transpiler pass that converts a TesseraCircuit into a backend-compatible circuit by replacing
+    all non-basis gates with equivalent sequences of basis gates supported by the target backend.
+
+    Each backend defines its own set of supported gates (basis gate set) and a decomposition map
+    that specifies how to break down non-basis gates into basis gate sequences. This pass walks
+    every instruction in the circuit and either passes it through unchanged (if it is already a
+    basis gate or a measurement) or substitutes it with its decomposed equivalent, remapping
+    qubit indices appropriately.
+
+    Supported Backends:
+        - IBM: {cx, rz, sx, x, u}
+
+    Raises:
+        ValueError: If a gate has no decomposition defined for the target backend.
+
+    Defaults to IBM if no backend is specified.
 '''
 from circuit import TesseraCircuit
 from instruction import TesseraInstruction
