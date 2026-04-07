@@ -47,13 +47,6 @@ def test_all_output_gates_are_basis():
     for ins in result.instructions:
         assert ins.name in IBM_BASIS_GATES
 
-def test_unknown_backend():
-    instructions = [
-        TesseraInstruction("h", [0], [], []),
-        TesseraInstruction("y", [1], [], []),
-        TesseraInstruction("cz", [0, 1], [], []),
-        TesseraInstruction("swap", [0, 1], [], []),
-    ]
-    circuit = TesseraCircuit(2, 0, instructions)
-    circ = BasisTranslationPass(backend="UNKNOWN").run(circuit)
-    assert circ == circuit
+def test_unknown_backend_raises():
+    with pytest.raises(ValueError, match="Unknown backend"):
+        BasisTranslationPass(backend="UNKNOWN")
