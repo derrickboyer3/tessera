@@ -83,6 +83,7 @@ not application code.
 | backends/decomposition_maps.py            | 100%   |                                  |
 | passes/basis_translation_pass.py          | 100%   |                                  |
 | transpiler.py                             | 100%   |                                  |
+| coupling_map.py                           | 100%   |                                  |
 
 ---
 
