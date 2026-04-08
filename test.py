@@ -76,3 +76,27 @@ translated_circuit = transpiler.execute()
 end = time.perf_counter()
 elapsed = end - start
 print(f"Successfully transpiled Qiskit Quantum Circuit for {backend} backend using Tessera Transpiler:\n{translated_circuit}\nTime: {elapsed}s")
+
+# Dense Layout Pass sanity check
+from hardware.coupling_map import TesseraCouplingMap
+from passes.dense_layout_pass import DenseLayoutPass
+from passes.trivial_pass import TrivialPass
+from circuit import TesseraCircuit
+from instruction import TesseraInstruction
+
+# Circuit where q0 and q1 interact a lot, q0 and q2 interact a little
+test_circuit = TesseraCircuit(3, 0, [
+    TesseraInstruction("cx", [0, 2], [], []),
+    TesseraInstruction("cx", [0, 2], [], []),
+    TesseraInstruction("cx", [0, 2], [], []),
+    TesseraInstruction("cx", [0, 1], [], []),
+])
+
+# Linear coupling map: 0->1->2->3->4
+cm = TesseraCouplingMap(5, [(0,1), (1,2), (2,3), (3,4)])
+
+trivial_result = TrivialPass(cm).run(test_circuit)
+dense_result = DenseLayoutPass(cm).run(test_circuit)
+
+print(f"Trivial Layout: {trivial_result.layout}")
+print(f"Dense Layout:   {dense_result.layout}")
