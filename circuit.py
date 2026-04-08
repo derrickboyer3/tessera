@@ -21,3 +21,4 @@ class TesseraCircuit:
     num_qubits: int
     num_clbits: int = 0
     instructions: list[TesseraInstruction] = field(default_factory=list)
+    layout: dict[int, int] = field(default_factory=dict)
