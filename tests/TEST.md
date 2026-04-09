@@ -85,6 +85,8 @@ not application code.
 | transpiler.py                             | 100%   |                                  |
 | hardware/coupling_map.py                  | 100%   |                                  |
 | passes/trivial_pass.py                    | 100%   |                                  |
+| passes/dense_layout_pass.py               | 100%   |                                  |
+| passes/basic_swap_router.py               | 100%   |                                  |
 
 ---
 
