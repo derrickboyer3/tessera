@@ -3,11 +3,14 @@
     ------------------
     The Tessera Transpiler is the class that allows a user to transpile their Qiskit circuit for a specific backend. It is initialized with
     the circuit itself, a CouplingMap representing the target hardware topology, the backend the user wants to use (IBM, etc.), an optional
-    custom path-finding strategy, and an optional debug flag. The execute function takes the Qiskit circuit, converts it to a Tessera circuit,
-    runs through each pass in the pass manager, converts the transpiled Tessera circuit back to Qiskit, and returns.
+    custom path-finding strategy, an optional strict flag for optimization passes, an optional epsilon for rotation merging, and an optional
+    debug flag. The execute function takes the Qiskit circuit, converts it to a Tessera circuit, runs through each pass in the pass manager,
+    converts the transpiled Tessera circuit back to Qiskit, and returns.
 
     High Level Overview:
-                                                                        (optional debug logs show here)
+
+                     (Conversion Stage 1)
+                                                                    (optional debug logs show here)
     +----------------+   from_qiskit()   +-----------------+          TesseraPassManager.run()
     | Qiskit Circuit |  ==============>  | Tessera Circuit |  ================================================
     +----------------+                   +-----------------+                                                 |
@@ -15,8 +18,16 @@
                                           Pass 1                    Pass 2                    Pass 3         |
                                    +--------------------+   +--------------------+   +--------------------+  |
                                    | BasisTranslation   |-->|   DenseLayout      |-->|  BasicSwapRouter   |<-+
-                                   | Decompose gates to |   | Map logical qubits |   | Apply layout and   |
+             (Transpilation Stage) | Decompose gates to |   | Map logical qubits |   | Apply layout and   |
                                    | backend basis set  |   | to physical qubits |   | insert SWAP gates  |
+                                   +--------------------+   +--------------------+   +--------------------+
+                                                                                                |
+                                                                                                V
+                                          Pass 4                    Pass 5                    Pass 6
+                                   +--------------------+   +--------------------+   +--------------------+
+                                   | RemoveBarriers     |-->| CancelAdjacent     |-->| MergeRotations     |
+              (Optimization Stage) | Strip barrier      |   | Remove self-inverse|   | Combine consecutive|
+                                   | instructions       |   | gate pairs         |   | rotation gates     |
                                    +--------------------+   +--------------------+   +--------------------+
                                                                                                 |
                                                                                                 | to_qiskit()
@@ -24,14 +35,16 @@
                                         return back                              +---------------------------+
     <============================================================================| Transpiled Qiskit Circuit |
                                                                                  +---------------------------+
-
-    More passes and iterations to come
+                                            (Conversion Stage 2)
 '''
 from converters import from_qiskit, to_qiskit
 from pass_manager import TesseraPassManager
 from passes.basis_translation_pass import BasisTranslationPass
 from passes.dense_layout_pass import DenseLayoutPass
 from passes.basic_swap_router import BasicSwapRouter
+from passes.remove_barriers_pass import RemoveBarriersPass
+from passes.cancel_adjacent_pass import CancelAdjacentPass
+from passes.merge_rotations_pass import MergeRotationsPass
 
 def log_before(pass_, circuit):
     print(f"[Tessera] Running pass: {pass_.name} | Gates: {len(circuit.instructions)}")
@@ -40,12 +53,21 @@ def log_after(pass_, circuit):
     print(f"[Tessera] Finished pass: {pass_.name} | Gates: {len(circuit.instructions)}")
 
 class TesseraTranspiler:
-    def __init__(self, circuit, coupling_map, backend="IBM", pathfinder=None, debug_on=False):
+    def __init__(self, circuit, coupling_map, backend="IBM", pathfinder=None, strict=True, epsilon=1e-9, debug_on=False):
         self.circuit = circuit
         self.backend = backend
         self.coupling_map = coupling_map
         self.path_finder = pathfinder
-        passes = [BasisTranslationPass(self.backend), DenseLayoutPass(self.coupling_map), BasicSwapRouter(self.coupling_map, self.path_finder)]
+        self.strict = strict
+        self.epsilon = epsilon
+        passes = [
+            BasisTranslationPass(self.backend), 
+            DenseLayoutPass(self.coupling_map), 
+            BasicSwapRouter(self.coupling_map, self.path_finder),
+            RemoveBarriersPass(),
+            CancelAdjacentPass(self.strict),
+            MergeRotationsPass(self.strict, self.epsilon)
+        ]
         self.pass_manager = TesseraPassManager(passes)
         self.debug_on = debug_on
 

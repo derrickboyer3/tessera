@@ -82,7 +82,7 @@ class BasicSwapRouter(TranspilerPass):
         swapped_remapped_ins = []
         for ins in remapped_ins:
             # Handle single qubit + measure gates
-            if ins.name == "measure":
+            if ins.name in ("measure", "barrier"):
                 swapped_remapped_ins.append(ins)
                 continue
             if len(ins.qubits) == 1:
