@@ -15,6 +15,7 @@
         5. Swap Router Test        — BasicSwapRouter on non-adjacent circuit
         6. Full Pipeline Test      — End to end through TesseraTranspiler
         7. Optimization Passes Test — CancelAdjacentPass, MergeRotationsPass, RemoveBarriersPass
+        8. Top-Level Transpile API Test — transpile() function, coupling map resolution, error handling
 '''
 import numpy as np
 import time
@@ -297,4 +298,65 @@ print(f"  Output: {len(result_epsilon.data)} gates")
 print(f"  Output circuit:\n{result_epsilon}")
 print(f"  Rz dropped by custom epsilon: {'rz' not in gate_names_epsilon}")
 print(f"  Time: {elapsed:.4f}s")
+print("  OK")
+
+# =============================================================
+# 8. TOP-LEVEL TRANSPILE API TEST
+# =============================================================
+section("8. Top-Level Transpile API Test")
+
+from api.transpile import transpile as tessera_transpile
+
+# Default usage — no coupling map, defaults to IBM_DEFAULT (FakeNairobiV2, 7 qubits)
+qc_api = QuantumCircuit(3, 3)
+qc_api.h(0)
+qc_api.cx(0, 1)
+qc_api.cx(1, 2)
+qc_api.measure([0, 1, 2], [0, 1, 2])
+
+print(f"  Input: {len(qc_api.data)} gates")
+print(f"  Input circuit:\n{qc_api}")
+
+start = time.perf_counter()
+result_api = tessera_transpile(qc_api, debug_on=True)
+elapsed = time.perf_counter() - start
+
+print(f"  Output: {len(result_api.data)} gates")
+print(f"  Output circuit qubits: {result_api.num_qubits} (physical qubits used from FakeNairobiV2 topology)")
+print(f"  Time: {elapsed:.4f}s")
+print("  OK")
+
+# String coupling map key
+print(f"\n  Testing with string coupling map key 'IBM_DEFAULT'...")
+result_string_key = tessera_transpile(qc_api, coupling_map="IBM_DEFAULT", debug_on=True)
+print(f"  Output: {len(result_string_key.data)} gates")
+print("  OK")
+
+# Custom TesseraCouplingMap
+print(f"\n  Testing with custom TesseraCouplingMap...")
+cm_custom = TesseraCouplingMap(3, [(0,1), (1,0), (1,2), (2,1)])
+result_custom = tessera_transpile(qc_api, coupling_map=cm_custom, debug_on=True)
+print(f"  Output: {len(result_custom.data)} gates")
+print("  OK")
+
+# Invalid backend
+print(f"\n  Testing invalid backend raises ValueError...")
+try:
+    tessera_transpile(qc_api, backend="FAKE_BACKEND")
+    print("  FAIL — should have raised ValueError")
+except ValueError as e:
+    print(f"  Correctly raised ValueError: {e}")
+print("  OK")
+
+# Circuit too large
+print(f"\n  Testing circuit too large raises ValueError...")
+qc_large = QuantumCircuit(10, 10)
+qc_large.h(0)
+qc_large.measure_all()
+cm_small = TesseraCouplingMap(2, [(0,1), (1,0)])
+try:
+    tessera_transpile(qc_large, coupling_map=cm_small)
+    print("  FAIL — should have raised ValueError")
+except ValueError as e:
+    print(f"  Correctly raised ValueError: {e}")
 print("  OK")

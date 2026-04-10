@@ -48,7 +48,8 @@ def from_qiskit(qc: QuantumCircuit) -> TesseraCircuit:
     return tessera_circuit
 
 def to_qiskit(tc: TesseraCircuit):
-    qc = QuantumCircuit(tc.num_qubits, tc.num_clbits)
+    physical_qubits = max(tc.layout.values()) + 1 if tc.layout else tc.num_qubits
+    qc = QuantumCircuit(physical_qubits, tc.num_clbits)
 
     for ins in tc.instructions:
         if ins.name == "barrier":
