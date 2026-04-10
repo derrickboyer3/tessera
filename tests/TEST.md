@@ -87,6 +87,7 @@ not application code.
 | passes/trivial_pass.py                    | 100%   |                                  |
 | passes/dense_layout_pass.py               | 100%   |                                  |
 | passes/basic_swap_router.py               | 100%   |                                  |
+| passes/cancel_adjacent_pass.py            | 100%   |                                  |
 
 ---
 
