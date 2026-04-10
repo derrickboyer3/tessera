@@ -9,22 +9,37 @@ Tessera takes a logical quantum circuit and transforms it into one that can run 
 
 ```
 Tessera/
-├── circuit.py              # TesseraCircuit — core circuit data structure
-├── instruction.py          # TesseraInstruction — single gate application
-├── converters.py           # Converts between Qiskit and Tessera formats
-├── gate_library.py         # Maps gate name strings to Qiskit gate objects
-├── transpiler_pass.py      # Abstract base class for all transpiler passes
-├── pass_manager.py         # Runs a sequential pipeline of passes
+├── api/
+│   └── transpile.py            # Top-level transpile() entry point
+├── backends/
+│   ├── backend_registry.py     # Maps backend names to gate sets and coupling maps
+│   ├── basis_gate_sets.py      # Supported gate sets per backend
+│   ├── decomposition_maps.py   # Gate decomposition sequences per backend
+│   └── coupling_maps.py        # Real hardware coupling maps from Qiskit fake providers
+├── hardware/
+│   └── coupling_map.py         # TesseraCouplingMap — directed graph over networkx
 ├── passes/
-│   └── identity_pass.py    # No-op pass for smoke testing
-└── tests/
-    ├── TEST.md             # Test suite documentation
-    ├── __init__.py
-    ├── test_circuit.py
-    ├── test_instruction.py
-    ├── test_converters.py
-    ├── test_pass_manager.py
-    └── test_identity_pass.py
+│   ├── basis_translation_pass.py
+│   ├── dense_layout_pass.py
+│   ├── basic_swap_router.py
+│   ├── remove_barriers_pass.py
+│   ├── cancel_adjacent_pass.py
+│   ├── merge_rotations_pass.py
+│   ├── trivial_pass.py
+│   └── identity_pass.py
+├── benchmarks/
+│   ├── benchmarks.py           # Tessera vs Qiskit comparison script
+│   ├── regression_tests.py     # Pytest regression tests locked to benchmark baselines
+│   └── benchmark.md            # Historical benchmark results and known issues
+├── tests/                      # Full pytest suite (100% coverage target)
+├── circuit.py                  # TesseraCircuit dataclass
+├── instruction.py              # TesseraInstruction dataclass
+├── converters.py               # from_qiskit() and to_qiskit()
+├── gate_library.py             # Gate name to Qiskit gate object mapping
+├── transpiler.py               # TesseraTranspiler class
+├── transpiler_pass.py          # Abstract base class for all passes
+├── pass_manager.py             # Sequential pass pipeline runner
+└── test.py                     # Manual end-to-end sanity test script
 ```
 
 ---
@@ -54,59 +69,79 @@ result = manager.run(circuit)
 
 ### Requirements
 ```bash
-pip install qiskit pytest pytest-cov
+pip install qiskit qiskit-aer qiskit-ibm-runtime matplotlib numpy scipy pytest pytest-cov networkx
 ```
 
-### Basic Usage
+### Quick Start
 ```python
 from qiskit import QuantumCircuit
-from converters import from_qiskit, to_qiskit
-from pass_manager import TesseraPassManager
-from passes.identity_pass import IdentityPass
+from api.transpile import transpile
 
-# Build a Qiskit circuit
-qc = QuantumCircuit(3, 3)
+qc = QuantumCircuit(3)
 qc.h(0)
-qc.cx(0, 2)
-qc.measure([0, 1, 2], [0, 1, 2])
+qc.cx(0, 1)
+qc.cx(1, 2)
+qc.measure_all()
 
-# Convert to Tessera IR
-tessera_circuit = from_qiskit(qc)
-
-# Run through the pass pipeline
-manager = TesseraPassManager([IdentityPass()])
-result = manager.run(tessera_circuit)
-
-# Convert back to Qiskit
-output = to_qiskit(result)
-print(output)
+transpiled = transpile(qc, backend="IBM")
+print(transpiled)
 ```
 
-### Running Tests
-```bash
-pytest Tessera/tests/ --cov=. --cov-report=term-missing
-```
+### Advanced Usage
+```python
+from qiskit import QuantumCircuit
+from api.transpile import transpile
+from hardware.coupling_map import TesseraCouplingMap
 
-See `tests/TEST.md` for full test suite documentation.
+# Custom coupling map
+cm = TesseraCouplingMap(3, [(0, 1), (1, 0), (1, 2), (2, 1)])
+
+transpiled = transpile(
+    qc,
+    backend="IBM",
+    coupling_map=cm,       # or pass a string key like "IBM_BRISBANE"
+    strict=False,          # use commutative optimization mode
+    epsilon=1e-6,          # custom rotation merge threshold
+    debug_on=True          # print per-pass gate counts
+)
+```
 
 ---
 
 ## Transpiler Pipeline
 
-The full transpiler pipeline Tessera is being built toward, in order:
+```
+BasisTranslation -> DenseLayout -> BasicSwapRouter -> RemoveBarriers -> CancelAdjacent -> MergeRotations
+```
 
-| Stage | Pass | Status | Description |
-|-------|------|--------|-------------|
-| 1 | Basis Translation | 🔜 Planned | Decompose gates into a target basis set |
-| 2 | Layout | 🔜 Planned | Map logical qubits to physical qubits |
-| 3 | Routing | 🔜 Planned | Insert SWAPs to satisfy coupling map constraints |
-| 4 | Optimization | 🔜 Planned | Cancel redundant gates, merge rotations |
+| Stage | Pass | Description |
+|-------|------|-------------|
+| 1 | `BasisTranslationPass` | Decomposes non-basis gates into backend-supported gate set |
+| 2 | `DenseLayoutPass` | Greedily maps logical qubits to physical qubits based on interaction frequency |
+| 3 | `BasicSwapRouter` | Applies layout and inserts SWAP gates for non-adjacent two-qubit gates |
+| 4 | `RemoveBarriersPass` | Strips barrier instructions before optimization |
+| 5 | `CancelAdjacentPass` | Removes pairs of adjacent self-inverse gates (X X, H H, CX CX, etc.) |
+| 6 | `MergeRotationsPass` | Combines consecutive rotation gates (Rz(a) Rz(b) -> Rz(a+b)) |
+
+---
+
+## Supported Backends
+
+| Backend Key | Device | Qubits | Basis Gates |
+|-------------|--------|--------|-------------|
+| `IBM` | FakeNairobiV2 (default) | 7 | cx, rz, sx, x, u |
+
+## Supported Coupling Maps
+
+| Key | Device | Qubits |
+|-----|--------|--------|
+| `IBM_DEFAULT` | FakeNairobiV2 | 7 |
+| `IBM_BRISBANE` | FakeBrisbane | 127 |
+| `IBM_SHERBROOKE` | FakeSherbrooke | 127 |
 
 ---
 
 ## Supported Gates
-
-Tessera currently supports the following gates in its gate library:
 
 ### Single-Qubit (no parameters)
 `h` `x` `y` `z` `s` `sdg` `t` `tdg` `sx`
@@ -125,6 +160,44 @@ Tessera currently supports the following gates in its gate library:
 
 ---
 
+## Running Tests
+
+```bash
+# Full test suite with coverage
+pytest tests/ --cov=. --cov-report=term-missing
+
+# Regression tests only
+pytest benchmarks/regression_tests.py
+
+# Manual sanity test
+python test.py
+```
+
+See `tests/TEST.md` for full test suite documentation and coverage targets.
+
+---
+
+## Benchmarks
+
+```bash
+python benchmarks/benchmarks.py
+```
+
+Compares Tessera against Qiskit's transpiler on gate count, circuit depth, transpile time, and simulation correctness. Results are tracked in `benchmarks/benchmark.md`.
+
+### Run 1 Results (FakeNairobiV2, Qiskit optimization level 1)
+
+| Circuit | Gates In | Gates (Tessera) | Gates (Qiskit) | Depth (Tessera) | Depth (Qiskit) | Sim Match |
+|---------|----------|-----------------|----------------|-----------------|----------------|-----------|
+| Bell State | 4 | 6 | 6 | 5 | 5 | Yes |
+| GHZ State | 6 | 8 | 8 | 6 | 6 | Yes |
+| QFT-like | 22 | 29 | 27 | 13 | 11 | Yes |
+| Stress Test | 18 | 33 | 35 | 16 | 18 | No* |
+
+*Stress Test simulation mismatch is a known issue — see `benchmarks/benchmark.md`.
+
+---
+
 ## Adding a New Pass
 
 1. Create a new file in `passes/` (e.g. `passes/my_pass.py`)
@@ -140,7 +213,7 @@ class MyPass(TranspilerPass):
         return circuit
 ```
 
-3. Add it to your `TesseraPassManager` pipeline
+3. Add it to the pass list in `transpiler.py`
 4. Add a corresponding `tests/test_my_pass.py`
 
 ---
@@ -150,12 +223,21 @@ class MyPass(TranspilerPass):
 - [x] Core IR (`TesseraCircuit`, `TesseraInstruction`)
 - [x] Qiskit converter (round-trip)
 - [x] Pass infrastructure (`TranspilerPass`, `TesseraPassManager`)
-- [x] Test suite with coverage reporting
-- [ ] Basis translation pass
-- [ ] Coupling map representation
-- [ ] Qubit layout pass
-- [ ] SWAP routing pass
-- [ ] Gate cancellation optimization pass
-- [ ] Rotation merging optimization pass
+- [x] Test suite with 100% coverage
+- [x] Basis translation pass
+- [x] Coupling map representation
+- [x] Trivial and dense qubit layout passes
+- [x] SWAP routing pass (BFS, pluggable path-finder)
+- [x] Gate cancellation optimization pass
+- [x] Rotation merging optimization pass
+- [x] Barrier removal pass
+- [x] Backend registry with real IBM hardware topologies
+- [x] Top-level `transpile(circuit, backend)` entry point
+- [x] Benchmark suite vs Qiskit
+- [x] Regression test suite
+- [ ] Commutative gate rewriting (improve CancelAdjacentPass)
+- [ ] Multi-pass optimization loop
 - [ ] Noise-aware layout
-- [ ] Full `transpile(circuit, backend)` entry point
+- [ ] Additional backend support
+- [ ] Fix Stress Test simulation mismatch (see known issues)
+- [ ] SABRE or A* routing algorithm
