@@ -51,6 +51,9 @@ def to_qiskit(tc: TesseraCircuit):
     qc = QuantumCircuit(tc.num_qubits, tc.num_clbits)
 
     for ins in tc.instructions:
+        if ins.name == "barrier":
+            qc.barrier(ins.qubits)
+            continue
         gate = gate_from_name(ins.name, ins.params)
         qc.append(gate, ins.qubits, ins.clbits)
 

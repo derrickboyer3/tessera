@@ -38,7 +38,7 @@ class BasisTranslationPass(TranspilerPass):
         for ins in circuit.instructions:
             if ins.name == "cnot":
                 ins.name = "cx"
-            if ins.name == "measure":
+            if ins.name in ("measure", "barrier"):
                 instructions.append(ins)
                 continue
             if ins.name in self.basis_gates:

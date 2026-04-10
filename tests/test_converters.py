@@ -39,3 +39,14 @@ def test_unknown_gate_raises():
     from converters import gate_from_name
     with pytest.raises(ValueError, match="Unknown gate"):
         gate_from_name("fake_gate", [])
+
+def test_to_qiskit_barrier():
+    from qiskit import QuantumCircuit
+    from converters import to_qiskit
+    from circuit import TesseraCircuit
+    from instruction import TesseraInstruction
+    tc = TesseraCircuit(2, 0, [
+        TesseraInstruction("barrier", [0, 1]),
+    ])
+    qc = to_qiskit(tc)
+    assert any(ins.operation.name == "barrier" for ins in qc.data)
