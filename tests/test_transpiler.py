@@ -46,3 +46,33 @@ def test_basic_with_debug():
     qc = make_simple_circuit()
     result = TesseraTranspiler(qc, make_coupling_map(), debug_on=True).execute()
     assert result is not None
+
+def test_strict_defaults_to_true():
+    qc = make_simple_circuit()
+    t = TesseraTranspiler(qc, make_coupling_map())
+    assert t.strict == True
+
+def test_epsilon_defaults_to_1e9():
+    qc = make_simple_circuit()
+    t = TesseraTranspiler(qc, make_coupling_map())
+    assert t.epsilon == 1e-9
+
+def test_custom_strict_false():
+    qc = make_simple_circuit()
+    t = TesseraTranspiler(qc, make_coupling_map(), strict=False)
+    assert t.strict == False
+
+def test_custom_epsilon():
+    qc = make_simple_circuit()
+    t = TesseraTranspiler(qc, make_coupling_map(), epsilon=1e-6)
+    assert t.epsilon == 1e-6
+
+def test_barriers_removed_after_execute():
+    qc = QuantumCircuit(2, 2)
+    qc.h(0)
+    qc.barrier()
+    qc.cx(0, 1)
+    qc.measure([0, 1], [0, 1])
+    result = TesseraTranspiler(qc, make_coupling_map()).execute()
+    for ins in result.data:
+        assert ins.operation.name != "barrier"

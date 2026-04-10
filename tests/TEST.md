@@ -89,6 +89,7 @@ not application code.
 | passes/basic_swap_router.py               | 100%   |                                  |
 | passes/cancel_adjacent_pass.py            | 100%   |                                  |
 | passes/merge_rotations_pass.py            | 100%   |                                  |
+| passes/remove_barriers_pass.py            | 100%   |                                  |
 
 ---
 

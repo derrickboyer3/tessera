@@ -14,6 +14,7 @@
         4. Layout Pass Test        — TrivialPass vs DenseLayoutPass comparison
         5. Swap Router Test        — BasicSwapRouter on non-adjacent circuit
         6. Full Pipeline Test      — End to end through TesseraTranspiler
+        7. Optimization Passes Test — CancelAdjacentPass, MergeRotationsPass, RemoveBarriersPass
 '''
 import numpy as np
 import time
@@ -215,4 +216,85 @@ print(f"  q1<->q3 distance: {cm_pipeline.distance(layout[1], layout[3])}")
 print(f"\n  Output: {len(final.data)} gates (includes basis decomposition + swaps)")
 print(f"  Final circuit:\n{final}")
 print(f"\n  Time: {elapsed:.4f}s")
+print("  OK")
+
+# =============================================================
+# 7. OPTIMIZATION PASSES TEST
+# =============================================================
+section("7. Optimization Passes Test")
+
+qc_opt = QuantumCircuit(3, 3)
+qc_opt.h(0)
+qc_opt.h(0)
+qc_opt.x(1)
+qc_opt.x(1)
+qc_opt.rz(pi / 4, 2)
+qc_opt.rz(pi / 4, 2)
+qc_opt.barrier()
+qc_opt.cx(0, 1)
+qc_opt.measure([0, 1, 2], [0, 1, 2])
+
+cm_opt = TesseraCouplingMap(3, [(0,1), (1,0), (1,2), (2,1)])
+
+print(f"  Input:  {len(qc_opt.data)} gates (includes cancellable pairs, mergeable rotations, and a barrier)")
+print(f"  Input circuit:\n{qc_opt}")
+
+transpiler_opt = TesseraTranspiler(qc_opt, cm_opt, backend="IBM", debug_on=True)
+start = time.perf_counter()
+result_opt = transpiler_opt.execute()
+elapsed = time.perf_counter() - start
+
+gate_names = [ins.operation.name for ins in result_opt.data]
+print(f"  Output: {len(result_opt.data)} gates")
+print(f"  Output circuit:\n{result_opt}")
+print(f"  Gates:  {gate_names}")
+print(f"  Barriers removed: {'barrier' not in gate_names}")
+print(f"  Gate count reduced: {len(result_opt.data) < len(qc_opt.data)}")
+print(f"  Time: {elapsed:.4f}s")
+print("  OK")
+
+# Commutative mode
+qc_commutative = QuantumCircuit(2, 2)
+qc_commutative.x(0)
+qc_commutative.rz(pi / 4, 1)
+qc_commutative.x(0)
+qc_commutative.rz(pi / 4, 1)
+qc_commutative.measure([0, 1], [0, 1])
+
+cm_commutative = TesseraCouplingMap(2, [(0,1), (1,0)])
+
+print(f"\n  Commutative mode input: {len(qc_commutative.data)} gates")
+print(f"  Input circuit:\n{qc_commutative}")
+
+transpiler_commutative = TesseraTranspiler(qc_commutative, cm_commutative, backend="IBM", strict=False, debug_on=True)
+start = time.perf_counter()
+result_commutative = transpiler_commutative.execute()
+elapsed = time.perf_counter() - start
+
+print(f"  Output: {len(result_commutative.data)} gates")
+print(f"  Output circuit:\n{result_commutative}")
+print(f"  Gate count reduced: {len(result_commutative.data) < len(qc_commutative.data)}")
+print(f"  Time: {elapsed:.4f}s")
+
+# Custom epsilon
+qc_epsilon = QuantumCircuit(1, 1)
+qc_epsilon.rz(0.005, 0)
+qc_epsilon.rz(-0.005, 0)
+qc_epsilon.measure(0, 0)
+
+cm_epsilon = TesseraCouplingMap(1, [])
+
+print(f"\n  Custom epsilon input: {len(qc_epsilon.data)} gates")
+print(f"  Input circuit:\n{qc_epsilon}")
+
+transpiler_epsilon = TesseraTranspiler(qc_epsilon, cm_epsilon, backend="IBM", epsilon=0.1, debug_on=True)
+start = time.perf_counter()
+result_epsilon = transpiler_epsilon.execute()
+elapsed = time.perf_counter() - start
+
+gate_names_epsilon = [ins.operation.name for ins in result_epsilon.data]
+print(f"  Output: {len(result_epsilon.data)} gates")
+print(f"  Output circuit:\n{result_epsilon}")
+print(f"  Rz dropped by custom epsilon: {'rz' not in gate_names_epsilon}")
+print(f"  Time: {elapsed:.4f}s")
 print("  OK")
