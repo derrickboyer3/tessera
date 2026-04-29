@@ -2,23 +2,23 @@
     Basic Swap Router
     -----------------
     A transpiler pass that routes a layout-mapped circuit to be compatible with the
-    physical connectivity constraints of the target hardware. It does this in two steps:
+    physical connectivity constraints of the target hardware.
 
-    Step 1 — Layout Application:
-        Rewrites all instruction qubit indices from logical qubits to physical qubits
-        using the layout stored in circuit.layout. This step requires a layout pass
-        (TrivialPass or DenseLayoutPass) to have been run beforehand.
+    Algorithm:
+        Walks the circuit instruction by instruction. For each instruction it
+        translates the logical qubit indices into physical qubits using the
+        current logical-to-physical mapping (which starts equal to circuit.layout
+        and is updated whenever a SWAP is inserted). For two-qubit gates whose
+        translated physical qubits are not adjacent on the coupling map, SWAP
+        gates are inserted along the shortest path to bring them adjacent before
+        the gate runs, and the mapping is updated accordingly so that all
+        subsequent instructions reference the correct physical qubits.
 
-    Step 2 — Swap Insertion:
-        Iterates through every instruction and checks if two-qubit gates are between
-        physically adjacent qubits on the coupling map. If not, SWAP gates are inserted
-        along the shortest path to bring the qubits adjacent before the gate runs.
-        Qubit positions are tracked and updated as SWAPs move logical qubits to new
-        physical locations.
+    Single qubit gates, measurements, and barriers are emitted with their qubit
+    indices translated to the current physical mapping.
 
-    Single qubit gates and measurements are passed through unchanged.
-    Gates with more than 2 qubits raise a ValueError — run BasisTranslationPass first
-    to decompose them into 2-qubit gates before routing.
+    Gates with more than 2 qubits raise a ValueError — run BasisTranslationPass
+    first to decompose them into 2-qubit gates before routing.
 
     Uses BFS (Breadth First Search) by default to find the shortest path between
     non-adjacent qubits. A custom path-finding strategy can be injected via the
@@ -70,48 +70,40 @@ class BasicSwapRouter(TranspilerPass):
         if not layout:
             raise ValueError("Tessera: No layout found on circuit. Run a layout pass before BasicSwapRouter.")
 
-        # Step 1: Apply Layout
-        remapped_ins = []
-        for ins in circuit.instructions:
-            remapped_qubits = [layout[q] for q in ins.qubits]
-            remapped_ins.append(TesseraInstruction(ins.name, remapped_qubits, ins.clbits, ins.params))
-
-        # Step 2: Iterate instructions and insert swap gates where needed
+        # current_positions and inverse_positions start equal to the initial layout
+        # and are updated each time a SWAP moves a logical qubit. Subsequent
+        # instructions are translated using current_positions so they land on the
+        # right physical qubits after any SWAPs have shifted things around.
         current_positions = dict(layout)
         inverse_positions = {v: k for k, v in layout.items()}
-        swapped_remapped_ins = []
-        for ins in remapped_ins:
-            # Handle single qubit + measure gates
+
+        out = []
+        for ins in circuit.instructions:
+            physical_qubits = [current_positions[q] for q in ins.qubits]
+
             if ins.name in ("measure", "barrier"):
-                swapped_remapped_ins.append(ins)
+                out.append(TesseraInstruction(ins.name, physical_qubits, ins.clbits, ins.params))
                 continue
             if len(ins.qubits) == 1:
-                swapped_remapped_ins.append(ins)
+                out.append(TesseraInstruction(ins.name, physical_qubits, ins.clbits, ins.params))
                 continue
 
-            # Handle multi-qubit gates
             if len(ins.qubits) == 2:
-                p0, p1 = ins.qubits[0], ins.qubits[1]
+                p0, p1 = physical_qubits[0], physical_qubits[1]
                 if self.coupling_map.are_connected(p0, p1):
-                    # Already adjacent, just keep the gate
-                    swapped_remapped_ins.append(ins)
+                    out.append(TesseraInstruction(ins.name, [p0, p1], ins.clbits, ins.params))
                 else:
-                    # Not adjacent, need to insert SWAPs
                     path = self.path_finder(p0, p1)
-                    # path is like [p0, p1, p2, p3]
-                    # insert swaps along the path to bring p0 next to p1
                     for i in range(len(path) - 2):
                         swap_a = path[i]
                         swap_b = path[i + 1]
-                        swapped_remapped_ins.append(TesseraInstruction("swap", [swap_a, swap_b], [], []))
-                        # Update tracking dicts
+                        out.append(TesseraInstruction("swap", [swap_a, swap_b], [], []))
                         log_a = inverse_positions[swap_a]
                         log_b = inverse_positions[swap_b]
                         current_positions[log_a], current_positions[log_b] = swap_b, swap_a
                         inverse_positions[swap_a], inverse_positions[swap_b] = log_b, log_a
-                    # Now p0 is adjacent to p1, append the gate with updated position
-                    swapped_remapped_ins.append(TesseraInstruction(ins.name, [path[-2], path[-1]], ins.clbits, ins.params))
+                    out.append(TesseraInstruction(ins.name, [path[-2], path[-1]], ins.clbits, ins.params))
             elif len(ins.qubits) > 2:
                 raise ValueError(f"Tessera: BasicSwapRouter encountered a {len(ins.qubits)}-qubit gate '{ins.name}'. Decompose to 2-qubit gates first using BasisTranslationPass.")
-        
-        return TesseraCircuit(circuit.num_qubits, circuit.num_clbits, swapped_remapped_ins, layout)
+
+        return TesseraCircuit(circuit.num_qubits, circuit.num_clbits, out, layout)
