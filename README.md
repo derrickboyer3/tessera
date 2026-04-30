@@ -9,36 +9,37 @@ Tessera takes a logical quantum circuit and transforms it into one that can run 
 
 ```
 Tessera/
-├── api/
-│   └── transpile.py            # Top-level transpile() entry point
-├── backends/
-│   ├── backend_registry.py     # Maps backend names to gate sets and coupling maps
-│   ├── basis_gate_sets.py      # Supported gate sets per backend
-│   ├── decomposition_maps.py   # Gate decomposition sequences per backend
-│   └── coupling_maps.py        # Real hardware coupling maps from Qiskit fake providers
-├── hardware/
-│   └── coupling_map.py         # TesseraCouplingMap — directed graph over networkx
-├── passes/
-│   ├── basis_translation_pass.py
-│   ├── dense_layout_pass.py
-│   ├── basic_swap_router.py
-│   ├── remove_barriers_pass.py
-│   ├── cancel_adjacent_pass.py
-│   ├── merge_rotations_pass.py
-│   ├── trivial_pass.py
-│   └── identity_pass.py
+├── tessera/                    # The installable package
+│   ├── api/
+│   │   └── transpile.py            # Top-level transpile() entry point
+│   ├── backends/
+│   │   ├── backend_registry.py     # Maps backend names to gate sets and coupling maps
+│   │   ├── basis_gate_sets.py      # Supported gate sets per backend
+│   │   ├── decomposition_maps.py   # Gate decomposition sequences per backend
+│   │   └── coupling_maps.py        # Real hardware coupling maps from Qiskit fake providers
+│   ├── hardware/
+│   │   └── coupling_map.py         # TesseraCouplingMap — directed graph over networkx
+│   ├── passes/
+│   │   ├── basis_translation_pass.py
+│   │   ├── dense_layout_pass.py
+│   │   ├── basic_swap_router.py
+│   │   ├── remove_barriers_pass.py
+│   │   ├── cancel_adjacent_pass.py
+│   │   ├── merge_rotations_pass.py
+│   │   ├── trivial_pass.py
+│   │   └── identity_pass.py
+│   ├── circuit.py              # TesseraCircuit dataclass
+│   ├── instruction.py          # TesseraInstruction dataclass
+│   ├── converters.py           # from_qiskit() and to_qiskit()
+│   ├── gate_library.py         # Gate name to Qiskit gate object mapping
+│   ├── transpiler.py           # TesseraTranspiler class
+│   ├── transpiler_pass.py      # Abstract base class for all passes
+│   └── pass_manager.py         # Sequential pass pipeline runner
 ├── benchmarks/
 │   ├── benchmarks.py           # Tessera vs Qiskit comparison script
 │   ├── regression_tests.py     # Pytest regression tests locked to benchmark baselines
 │   └── benchmark.md            # Historical benchmark results and known issues
 ├── tests/                      # Full pytest suite (100% coverage target)
-├── circuit.py                  # TesseraCircuit dataclass
-├── instruction.py              # TesseraInstruction dataclass
-├── converters.py               # from_qiskit() and to_qiskit()
-├── gate_library.py             # Gate name to Qiskit gate object mapping
-├── transpiler.py               # TesseraTranspiler class
-├── transpiler_pass.py          # Abstract base class for all passes
-├── pass_manager.py             # Sequential pass pipeline runner
 └── test.py                     # Manual end-to-end sanity test script
 ```
 
@@ -81,7 +82,7 @@ pip install -r requirements-dev.txt
 ### Quick Start
 ```python
 from qiskit import QuantumCircuit
-from api.transpile import transpile
+from tessera.api.transpile import transpile
 
 qc = QuantumCircuit(3)
 qc.h(0)
@@ -96,8 +97,8 @@ print(transpiled)
 ### Advanced Usage
 ```python
 from qiskit import QuantumCircuit
-from api.transpile import transpile
-from hardware.coupling_map import TesseraCouplingMap
+from tessera.api.transpile import transpile
+from tessera.hardware.coupling_map import TesseraCouplingMap
 
 # Custom coupling map
 cm = TesseraCouplingMap(3, [(0, 1), (1, 0), (1, 2), (2, 1)])
@@ -206,12 +207,12 @@ Compares Tessera against Qiskit's transpiler on gate count, circuit depth, trans
 
 ## Adding a New Pass
 
-1. Create a new file in `passes/` (e.g. `passes/my_pass.py`)
+1. Create a new file in `tessera/passes/` (e.g. `tessera/passes/my_pass.py`)
 2. Inherit from `TranspilerPass` and implement `run()`
 
 ```python
-from circuit import TesseraCircuit
-from transpiler_pass import TranspilerPass
+from tessera.circuit import TesseraCircuit
+from tessera.transpiler_pass import TranspilerPass
 
 class MyPass(TranspilerPass):
     def run(self, circuit: TesseraCircuit) -> TesseraCircuit:
@@ -219,7 +220,7 @@ class MyPass(TranspilerPass):
         return circuit
 ```
 
-3. Add it to the pass list in `transpiler.py`
+3. Add it to the pass list in `tessera/transpiler.py`
 4. Add a corresponding `tests/test_my_pass.py`
 
 ---

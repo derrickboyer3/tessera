@@ -11,8 +11,8 @@
     Passes can also be added incrementally via add_pass(). The pipeline can be
     cleared and rebuilt at any time using clear().
 '''
-from circuit import TesseraCircuit
-from transpiler_pass import TranspilerPass
+from tessera.circuit import TesseraCircuit
+from tessera.transpiler_pass import TranspilerPass
 
 class TesseraPassManager:
 

@@ -4,7 +4,7 @@
     This file houses our decomposition maps. This allows us to break down gates into their basis forms for specific backends based on the
     backend-specific basis gate sets
 '''
-from instruction import TesseraInstruction
+from tessera.instruction import TesseraInstruction
 import numpy as np
 pi = np.pi
 

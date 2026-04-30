@@ -20,16 +20,16 @@
 import numpy as np
 import time
 from qiskit import QuantumCircuit
-from converters import from_qiskit, to_qiskit
-from pass_manager import TesseraPassManager
-from passes.identity_pass import IdentityPass
-from passes.dense_layout_pass import DenseLayoutPass
-from passes.trivial_pass import TrivialPass
-from passes.basic_swap_router import BasicSwapRouter
-from transpiler import TesseraTranspiler
-from hardware.coupling_map import TesseraCouplingMap
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
+from tessera.converters import from_qiskit, to_qiskit
+from tessera.pass_manager import TesseraPassManager
+from tessera.passes.identity_pass import IdentityPass
+from tessera.passes.dense_layout_pass import DenseLayoutPass
+from tessera.passes.trivial_pass import TrivialPass
+from tessera.passes.basic_swap_router import BasicSwapRouter
+from tessera.transpiler import TesseraTranspiler
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
 
 pi = np.pi
 
@@ -207,7 +207,7 @@ elapsed = time.perf_counter() - start
 
 # Show layout that DenseLayoutPass chose
 tes = from_qiskit(qc_pipeline)
-from passes.dense_layout_pass import DenseLayoutPass
+from tessera.passes.dense_layout_pass import DenseLayoutPass
 layout = DenseLayoutPass(cm_pipeline).run(tes).layout
 print(f"\n  Dense Layout chosen: {layout}")
 print(f"  (q0 and q4 should be close — they interact 4 times)")
@@ -305,7 +305,7 @@ print("  OK")
 # =============================================================
 section("8. Top-Level Transpile API Test")
 
-from api.transpile import transpile as tessera_transpile
+from tessera.api.transpile import transpile as tessera_transpile
 
 # Default usage — no coupling map, defaults to IBM_DEFAULT (FakeNairobiV2, 7 qubits)
 qc_api = QuantumCircuit(3, 3)

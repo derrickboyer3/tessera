@@ -22,9 +22,9 @@
 
     This pass should be run after routing and basis translation.
 '''
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from transpiler_pass import TranspilerPass
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.transpiler_pass import TranspilerPass
 
 MERGEABLE_ROTATION_GATES = {"rz", "rx", "ry"}
 

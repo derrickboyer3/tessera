@@ -1,5 +1,5 @@
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
 
 def test_basic_creation():
     tc = TesseraCircuit(2)

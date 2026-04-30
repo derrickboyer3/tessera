@@ -37,14 +37,14 @@
                                                                                  +---------------------------+
                                             (Conversion Stage 2)
 '''
-from converters import from_qiskit, to_qiskit
-from pass_manager import TesseraPassManager
-from passes.basis_translation_pass import BasisTranslationPass
-from passes.dense_layout_pass import DenseLayoutPass
-from passes.basic_swap_router import BasicSwapRouter
-from passes.remove_barriers_pass import RemoveBarriersPass
-from passes.cancel_adjacent_pass import CancelAdjacentPass
-from passes.merge_rotations_pass import MergeRotationsPass
+from tessera.converters import from_qiskit, to_qiskit
+from tessera.pass_manager import TesseraPassManager
+from tessera.passes.basis_translation_pass import BasisTranslationPass
+from tessera.passes.dense_layout_pass import DenseLayoutPass
+from tessera.passes.basic_swap_router import BasicSwapRouter
+from tessera.passes.remove_barriers_pass import RemoveBarriersPass
+from tessera.passes.cancel_adjacent_pass import CancelAdjacentPass
+from tessera.passes.merge_rotations_pass import MergeRotationsPass
 
 def log_before(pass_, circuit):
     print(f"[Tessera] Running pass: {pass_.name} | Gates: {len(circuit.instructions)}")

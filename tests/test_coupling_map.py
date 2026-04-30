@@ -1,4 +1,4 @@
-from hardware.coupling_map import TesseraCouplingMap
+from tessera.hardware.coupling_map import TesseraCouplingMap
 import pytest
 
 def make_linear_map():

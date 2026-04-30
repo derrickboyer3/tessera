@@ -16,8 +16,8 @@
     Available backends:
         - IBM: basis gates {cx, rz, sx, x, u}, defaults to FakeNairobi (7 qubit) topology
 '''
-from backends.basis_gate_sets import IBM_BASIS_GATES
-from backends.decomposition_maps import IBM_DECOMP_MAP
+from tessera.backends.basis_gate_sets import IBM_BASIS_GATES
+from tessera.backends.decomposition_maps import IBM_DECOMP_MAP
 
 BACKEND_REGISTRY = {
     "IBM": {
@@ -27,8 +27,8 @@ BACKEND_REGISTRY = {
     }
     # Add new backend registrations here
 }
-from backends.basis_gate_sets import IBM_BASIS_GATES
-from backends.decomposition_maps import IBM_DECOMP_MAP
+from tessera.backends.basis_gate_sets import IBM_BASIS_GATES
+from tessera.backends.decomposition_maps import IBM_DECOMP_MAP
 
 BACKEND_REGISTRY = {
     "IBM": {

@@ -1,7 +1,7 @@
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from pass_manager import TesseraPassManager
-from transpiler_pass import TranspilerPass
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.pass_manager import TesseraPassManager
+from tessera.transpiler_pass import TranspilerPass
 
 def make_test_circuit():
     return TesseraCircuit(2, 0, [

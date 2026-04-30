@@ -14,7 +14,7 @@
         |-------------------------------------------------------------------------------------------|
 '''
 from dataclasses import dataclass, field
-from instruction import TesseraInstruction
+from tessera.instruction import TesseraInstruction
 
 @dataclass
 class TesseraCircuit:

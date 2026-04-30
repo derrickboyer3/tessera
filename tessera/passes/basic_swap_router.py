@@ -34,10 +34,10 @@
         ValueError: If no layout is found on the circuit.
         ValueError: If a gate with more than 2 qubits is encountered.
 '''
-from circuit import TesseraCircuit
-from hardware.coupling_map import TesseraCouplingMap
-from transpiler_pass import TranspilerPass
-from instruction import TesseraInstruction
+from tessera.circuit import TesseraCircuit
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.transpiler_pass import TranspilerPass
+from tessera.instruction import TesseraInstruction
 
 class BasicSwapRouter(TranspilerPass):
     def __init__(self, coupling_map: TesseraCouplingMap, path_finder=None):

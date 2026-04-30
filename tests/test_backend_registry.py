@@ -1,5 +1,5 @@
 # tests/test_backend_registry.py
-from backends.backend_registry import BACKEND_REGISTRY
+from tessera.backends.backend_registry import BACKEND_REGISTRY
 
 def test_ibm_in_registry():
     assert "IBM" in BACKEND_REGISTRY

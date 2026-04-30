@@ -13,9 +13,9 @@
     Raises:
         ValueError: If the circuit has more qubits than the coupling map supports.
 '''
-from circuit import TesseraCircuit
-from hardware.coupling_map import TesseraCouplingMap
-from transpiler_pass import TranspilerPass
+from tessera.circuit import TesseraCircuit
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.transpiler_pass import TranspilerPass
 
 class TrivialPass(TranspilerPass):
     def __init__(self, coupling_map: TesseraCouplingMap):

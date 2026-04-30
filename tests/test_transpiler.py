@@ -1,7 +1,7 @@
 from qiskit import QuantumCircuit
-from transpiler import TesseraTranspiler
-from backends.basis_gate_sets import IBM_BASIS_GATES
-from hardware.coupling_map import TesseraCouplingMap
+from tessera.transpiler import TesseraTranspiler
+from tessera.backends.basis_gate_sets import IBM_BASIS_GATES
+from tessera.hardware.coupling_map import TesseraCouplingMap
 
 BASIS_PLUS_MEASURE = IBM_BASIS_GATES | {"measure", "swap"}
 

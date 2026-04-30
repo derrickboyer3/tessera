@@ -11,7 +11,7 @@
     TesseraPassManager in the order they are added.
 '''
 from abc import ABC, abstractmethod
-from circuit import TesseraCircuit
+from tessera.circuit import TesseraCircuit
 
 class TranspilerPass(ABC):
 
