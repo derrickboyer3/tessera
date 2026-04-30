@@ -28,3 +28,9 @@ coverage.xml
 Thumbs.db
 
 .claude
+
+# Packaging
+*.egg-info/
+*.egg
+build/
+dist/

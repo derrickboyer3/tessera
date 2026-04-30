@@ -69,15 +69,18 @@ result = manager.run(circuit)
 ## Getting Started
 
 ### Requirements
-Install runtime dependencies:
+Install Tessera in editable mode with runtime dependencies:
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 To also run the test suite and benchmarks:
 ```bash
-pip install -r requirements-dev.txt
+pip install -e .[dev]
 ```
+
+The `requirements.txt` and `requirements-dev.txt` files at the repo root are
+thin wrappers around the same install commands and can be used interchangeably.
 
 ### Quick Start
 ```python
