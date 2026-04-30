@@ -6,9 +6,9 @@
 '''
 import pytest
 import math
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from passes.merge_rotations_pass import MergeRotationsPass
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.passes.merge_rotations_pass import MergeRotationsPass
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

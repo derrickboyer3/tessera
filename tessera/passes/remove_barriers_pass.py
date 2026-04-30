@@ -10,8 +10,8 @@
 
     This pass should be run after routing and before optimization passes.
 '''
-from circuit import TesseraCircuit
-from transpiler_pass import TranspilerPass
+from tessera.circuit import TesseraCircuit
+from tessera.transpiler_pass import TranspilerPass
 
 class RemoveBarriersPass(TranspilerPass):
     def run(self, circuit: TesseraCircuit) -> TesseraCircuit:

@@ -1,5 +1,5 @@
-from backends.decomposition_maps import IBM_DECOMP_MAP
-from instruction import TesseraInstruction
+from tessera.backends.decomposition_maps import IBM_DECOMP_MAP
+from tessera.instruction import TesseraInstruction
 import numpy as np
 pi = np.pi
 

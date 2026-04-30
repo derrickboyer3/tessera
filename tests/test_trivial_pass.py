@@ -1,7 +1,7 @@
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from hardware.coupling_map import TesseraCouplingMap
-from passes.trivial_pass import TrivialPass
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.passes.trivial_pass import TrivialPass
 import pytest
 
 def make_circuit(num_qubits):

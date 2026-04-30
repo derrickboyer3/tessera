@@ -39,10 +39,9 @@ from qiskit_aer import AerSimulator
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from api.transpile import transpile as tessera_transpile
-from backends.coupling_maps import IBM_DEFAULT_COUPLING_MAP
+from tessera.api.transpile import transpile as tessera_transpile
+from tessera.backends.coupling_maps import IBM_DEFAULT_COUPLING_MAP
 
 pi = np.pi
 SHOTS = 4096

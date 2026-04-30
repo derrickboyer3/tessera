@@ -1,7 +1,7 @@
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from hardware.coupling_map import TesseraCouplingMap
-from passes.basic_swap_router import BasicSwapRouter
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.passes.basic_swap_router import BasicSwapRouter
 import pytest
 
 def make_linear_map():

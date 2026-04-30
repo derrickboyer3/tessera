@@ -15,7 +15,7 @@
     with its default hardware topology.
 '''
 from qiskit_ibm_runtime.fake_provider import FakeNairobiV2, FakeBrisbane, FakeSherbrooke
-from hardware.coupling_map import TesseraCouplingMap
+from tessera.hardware.coupling_map import TesseraCouplingMap
 
 def _build_ibm_default_coupling_map():
     backend = FakeNairobiV2()

@@ -1,6 +1,6 @@
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from passes.identity_pass import IdentityPass
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.passes.identity_pass import IdentityPass
 
 def test_identity_returns_same_circuit():
     circuit = TesseraCircuit(2, 0, [

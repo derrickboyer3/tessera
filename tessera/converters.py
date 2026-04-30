@@ -9,9 +9,9 @@
     1.) gate_from_name(name: str, params: list) => Qiskit Gate Object
 '''
 from qiskit import QuantumCircuit
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from gate_library import GATE_MAP
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.gate_library import GATE_MAP
 
 # Helper function for creating a Qiskit Gate object from the Tessera 'name' field using out mapping library
 def gate_from_name(name: str, params: list):

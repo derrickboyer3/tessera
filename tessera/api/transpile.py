@@ -37,10 +37,10 @@
         transpiled = transpile(qc, backend="IBM")
 '''
 import time
-from backends.backend_registry import BACKEND_REGISTRY
-from backends.coupling_maps import COUPLING_MAP_REGISTRY
-from hardware.coupling_map import TesseraCouplingMap
-from transpiler import TesseraTranspiler
+from tessera.backends.backend_registry import BACKEND_REGISTRY
+from tessera.backends.coupling_maps import COUPLING_MAP_REGISTRY
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.transpiler import TesseraTranspiler
 
 def transpile(circuit, backend="IBM", coupling_map=None, pathfinder=None, strict=True, epsilon=1e-9, debug_on=False):
     # Step 1: Validate Backend

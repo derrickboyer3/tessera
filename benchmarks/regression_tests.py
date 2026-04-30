@@ -15,16 +15,13 @@
     Run with:
         pytest Tessera/benchmarks/regression_tests.py
 '''
-import sys
 import os
 import json
 import numpy as np
 from qiskit import QuantumCircuit
 from qiskit_aer import AerSimulator
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-from api.transpile import transpile as tessera_transpile
+from tessera.api.transpile import transpile as tessera_transpile
 
 pi = np.pi
 SHOTS = 4096

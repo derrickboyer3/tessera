@@ -6,9 +6,9 @@
 '''
 import pytest
 from qiskit import QuantumCircuit
-from api.transpile import transpile
-from hardware.coupling_map import TesseraCouplingMap
-from backends.coupling_maps import COUPLING_MAP_REGISTRY
+from tessera.api.transpile import transpile
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.backends.coupling_maps import COUPLING_MAP_REGISTRY
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

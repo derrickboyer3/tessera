@@ -1,5 +1,5 @@
 from qiskit import QuantumCircuit
-from converters import from_qiskit, to_qiskit
+from tessera.converters import from_qiskit, to_qiskit
 import pytest
 
 def make_test_circuit():
@@ -36,15 +36,15 @@ def test_round_trip():
     assert len(qc2.data) == len(qc.data)
 
 def test_unknown_gate_raises():
-    from converters import gate_from_name
+    from tessera.converters import gate_from_name
     with pytest.raises(ValueError, match="Unknown gate"):
         gate_from_name("fake_gate", [])
 
 def test_to_qiskit_barrier():
     from qiskit import QuantumCircuit
-    from converters import to_qiskit
-    from circuit import TesseraCircuit
-    from instruction import TesseraInstruction
+    from tessera.converters import to_qiskit
+    from tessera.circuit import TesseraCircuit
+    from tessera.instruction import TesseraInstruction
     tc = TesseraCircuit(2, 0, [
         TesseraInstruction("barrier", [0, 1]),
     ])

@@ -1,7 +1,7 @@
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from passes.basis_translation_pass import BasisTranslationPass
-from backends.basis_gate_sets import IBM_BASIS_GATES
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.passes.basis_translation_pass import BasisTranslationPass
+from tessera.backends.basis_gate_sets import IBM_BASIS_GATES
 import pytest
 import numpy as np
 pi = np.pi

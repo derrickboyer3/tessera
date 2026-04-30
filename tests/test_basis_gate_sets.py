@@ -1,4 +1,4 @@
-from backends.basis_gate_sets import IBM_BASIS_GATES
+from tessera.backends.basis_gate_sets import IBM_BASIS_GATES
 
 def test_ibm_basis_gates_contains_expected():
     assert "cx" in IBM_BASIS_GATES
