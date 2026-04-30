@@ -68,8 +68,14 @@ result = manager.run(circuit)
 ## Getting Started
 
 ### Requirements
+Install runtime dependencies:
 ```bash
-pip install qiskit qiskit-aer qiskit-ibm-runtime matplotlib numpy scipy pytest pytest-cov networkx
+pip install -r requirements.txt
+```
+
+To also run the test suite and benchmarks:
+```bash
+pip install -r requirements-dev.txt
 ```
 
 ### Quick Start

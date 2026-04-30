@@ -7,6 +7,14 @@ as new passes and optimizations are added.
 
 ---
 
+## Requirements
+Benchmarks use `qiskit-aer` for simulation correctness checks. Install via the dev requirements file:
+```bash
+pip install -r requirements-dev.txt
+```
+
+---
+
 ## How to Run Benchmarks
 ```bash
 # From the project root directory

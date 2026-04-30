@@ -1,0 +1,4 @@
+qiskit>=2.3
+qiskit-ibm-runtime>=0.46
+numpy>=2.0
+networkx>=3.0

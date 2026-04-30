@@ -1,9 +1,9 @@
 # Tessera Test Suite
 
 ## Required Packages
-Install the following packages before running tests:
+Install dev dependencies (pulls in pytest, pytest-cov, and qiskit-aer alongside runtime deps):
 ```bash
-pip install pytest pytest-cov
+pip install -r requirements-dev.txt
 ```
 
 ## Running Tests
