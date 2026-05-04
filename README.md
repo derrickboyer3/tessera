@@ -121,7 +121,7 @@ transpiled = transpile(
 ## Transpiler Pipeline
 
 ```
-BasisTranslation -> DenseLayout -> BasicSwapRouter -> RemoveBarriers -> CancelAdjacent -> MergeRotations
+BasisTranslation -> DenseLayout -> BasicSwapRouter -> BasisTranslation2 -> RemoveBarriers -> CancelAdjacent -> MergeRotations
 ```
 
 | Stage | Pass | Description |
@@ -129,9 +129,10 @@ BasisTranslation -> DenseLayout -> BasicSwapRouter -> RemoveBarriers -> CancelAd
 | 1 | `BasisTranslationPass` | Decomposes non-basis gates into backend-supported gate set |
 | 2 | `DenseLayoutPass` | Greedily maps logical qubits to physical qubits based on interaction frequency |
 | 3 | `BasicSwapRouter` | Applies layout and inserts SWAP gates for non-adjacent two-qubit gates |
-| 4 | `RemoveBarriersPass` | Strips barrier instructions before optimization |
-| 5 | `CancelAdjacentPass` | Removes pairs of adjacent self-inverse gates (X X, H H, CX CX, etc.) |
-| 6 | `MergeRotationsPass` | Combines consecutive rotation gates (Rz(a) Rz(b) -> Rz(a+b)) |
+| 4 | `BasisTranslationPass` | Re-runs basis translation to decompose any SWAP gates inserted by routing |
+| 5 | `RemoveBarriersPass` | Strips barrier instructions before optimization |
+| 6 | `CancelAdjacentPass` | Removes pairs of adjacent self-inverse gates (X X, H H, CX CX, etc.) |
+| 7 | `MergeRotationsPass` | Combines consecutive rotation gates (Rz(a) Rz(b) -> Rz(a+b)) |
 
 ---
 
@@ -140,14 +141,20 @@ BasisTranslation -> DenseLayout -> BasicSwapRouter -> RemoveBarriers -> CancelAd
 | Backend Key | Device | Qubits | Basis Gates |
 |-------------|--------|--------|-------------|
 | `IBM` | FakeNairobiV2 (default) | 7 | cx, rz, sx, x, u |
+| `IONQ` | Aria (default) | 25 | rx, ry, rz, cx |
+| `RIGETTI` | Ankaa-2 (default) | 84 | rx, rz, cz |
 
 ## Supported Coupling Maps
 
-| Key | Device | Qubits |
-|-----|--------|--------|
-| `IBM_DEFAULT` | FakeNairobiV2 | 7 |
-| `IBM_BRISBANE` | FakeBrisbane | 127 |
-| `IBM_SHERBROOKE` | FakeSherbrooke | 127 |
+| Key | Device | Qubits | Topology |
+|-----|--------|--------|----------|
+| `IBM_DEFAULT` | FakeNairobiV2 | 7 | Heavy-hex |
+| `IBM_BRISBANE` | FakeBrisbane | 127 | Heavy-hex |
+| `IBM_SHERBROOKE` | FakeSherbrooke | 127 | Heavy-hex |
+| `IONQ_ARIA` | IonQ Aria | 25 | All-to-all |
+| `IONQ_FORTE` | IonQ Forte | 36 | All-to-all |
+| `RIGETTI_ANKAA` | Rigetti Ankaa-2 | 84 | Rectangular grid |
+| `RIGETTI_ANKAA_9Q` | Rigetti Ankaa-9Q-3 | 9 | Rectangular grid |
 
 ---
 
@@ -195,16 +202,7 @@ python benchmarks/benchmarks.py
 
 Compares Tessera against Qiskit's transpiler on gate count, circuit depth, transpile time, and simulation correctness. Results are tracked in `benchmarks/benchmark.md`.
 
-### Run 1 Results (FakeNairobiV2, Qiskit optimization level 1)
-
-| Circuit | Gates In | Gates (Tessera) | Gates (Qiskit) | Depth (Tessera) | Depth (Qiskit) | Sim Match |
-|---------|----------|-----------------|----------------|-----------------|----------------|-----------|
-| Bell State | 4 | 6 | 6 | 5 | 5 | Yes |
-| GHZ State | 6 | 8 | 8 | 6 | 6 | Yes |
-| QFT-like | 22 | 29 | 27 | 13 | 11 | Yes |
-| Stress Test | 18 | 33 | 35 | 16 | 18 | No* |
-
-*Stress Test simulation mismatch is a known issue — see `benchmarks/benchmark.md`.
+See `benchmarks/benchmarks.md` for full historical results, run notes, and resolved issues.
 
 ---
 
@@ -245,9 +243,8 @@ class MyPass(TranspilerPass):
 - [x] Top-level `transpile(circuit, backend)` entry point
 - [x] Benchmark suite vs Qiskit
 - [x] Regression test suite
+- [x] IonQ and Rigetti backend support
 - [ ] Commutative gate rewriting (improve CancelAdjacentPass)
 - [ ] Multi-pass optimization loop
 - [ ] Noise-aware layout
-- [ ] Additional backend support
-- [ ] Fix Stress Test simulation mismatch (see known issues)
 - [ ] SABRE or A* routing algorithm

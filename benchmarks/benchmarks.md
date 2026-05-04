@@ -110,6 +110,27 @@ Resolved Issues).
 - Gate count and depth are unchanged from Run 1 across all four circuits, confirming the fix corrected only the measurement targets and post-SWAP gate qubit indices, not the structural routing decisions
 - All four circuits now meet the simulation-correctness floor
 
+### Run 3
+- **Date:** 2026-05-04
+- **Tessera Phase:** IonQ + Rigetti backend support / routing SWAP decomposition fix
+- **Coupling Map:** FakeNairobiV2 (7 qubits, heavy-hex)
+- **Qiskit Optimization Level:** 1
+- **Shots per Simulation:** 4096
+- **Simulation Tolerance:** 0.05
+
+| Circuit | Gates In | Gates (Tessera) | Gates (Qiskit) | Depth (Tessera) | Depth (Qiskit) | Sim Match | Time (Tessera) | Time (Qiskit) |
+|---------|----------|-----------------|----------------|-----------------|----------------|-----------|----------------|---------------|
+| Bell State | 4 | 6 | 6 | 5 | 5 | Yes | 0.0013s | 0.0334s |
+| GHZ State | 6 | 8 | 8 | 6 | 6 | Yes | 0.0007s | 0.0062s |
+| QFT-like | 22 | 31 | 27 | 15 | 11 | Yes | 0.0011s | 0.0060s |
+| Stress Test | 18 | 35 | 35 | 18 | 18 | Yes | 0.0011s | 0.0070s |
+
+**Notes:**
+- Baseline reset this run — prior Run 2 numbers were recorded while a routing SWAP decomposition bug was active. Routing SWAPs inserted by `BasicSwapRouter` were never passed through a second `BasisTranslationPass`, meaning they remained as raw `swap` instructions in the final circuit rather than being expanded to backend basis gates. The fix adds a second `BasisTranslationPass` after routing, extending the pipeline from 6 to 7 passes.
+- QFT-like and Stress Test gate counts are higher than Run 2 (29→31, 33→35) because routing SWAPs are now correctly decomposed to basis gates. The Run 2 numbers were artificially low.
+- Bell State and GHZ State are unchanged — these small circuits required no routing SWAPs.
+- All four circuits pass simulation correctness.
+
 ---
 
 ## How to Add a New Run
@@ -141,7 +162,7 @@ For the Stress Test specifically, logical qubit 2 was placed late by DenseLayout
 - Tessera's single-pass MergeRotationsPass may leave one unmerged Rz in chains of 3+ consecutive rotations.
 - Qiskit optimization level 1 is used as the reference. Higher Qiskit optimization levels will outperform Tessera more significantly.
 - Gate counts include SWAP overhead from routing and basis decomposition expansion.
-- Tessera does not yet support all IBM basis gate decompositions — unsupported gates will raise a ValueError.
+- If a gate has no decomposition defined for the target backend, transpilation will raise a ValueError.
 
 ---
 
@@ -170,5 +191,5 @@ not a moving ceiling.
 |---------|-----------|----------------|-----------|----------------|-------------------|
 | Bell State | 6 | 6 | 5 | 5 | Yes |
 | GHZ State | 8 | 8 | 6 | 6 | Yes |
-| QFT-like | 29 | 29 | 13 | 13 | Yes |
-| Stress Test | 33 | 33 | 16 | 16 | Yes |
+| QFT-like | 31 | 31 | 15 | 15 | Yes |
+| Stress Test | 35 | 35 | 18 | 18 | Yes |
