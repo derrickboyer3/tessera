@@ -10,22 +10,22 @@ pip install -r requirements-dev.txt
 
 ### Run all tests with coverage report
 ```bash
-pytest Tessera/tests/ --cov=. --cov-report=term-missing
+pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 ### Run all tests without coverage
 ```bash
-pytest Tessera/tests/
+pytest tests/
 ```
 
 ### Run a specific test file
 ```bash
-pytest Tessera/tests/test_converters.py --cov=. --cov-report=term-missing
+pytest tests/test_converters.py --cov=. --cov-report=term-missing
 ```
 
 ### Generate an HTML coverage report
 ```bash
-pytest Tessera/tests/ --cov=. --cov-report=html
+pytest tests/ --cov=. --cov-report=html
 ```
 Opens `htmlcov/index.html` in your browser for a full visual breakdown per file.
 
@@ -46,7 +46,7 @@ Tessera\tests\test_converters.py .....   [ 43%]
 ```
 Name                    Stmts   Miss  Cover   Missing
 -----------------------------------------------------
-Tessera\converters.py      28      1    96%   19
+tessera\converters.py      28      1    96%   19
 ```
 - **Stmts** — total number of executable lines in the file
 - **Miss** — number of lines not executed during tests

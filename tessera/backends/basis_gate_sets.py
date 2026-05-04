@@ -7,3 +7,9 @@
 
 # IBM Basis Gate Set
 IBM_BASIS_GATES = {"cx", "rz", "sx", "x", "u"}
+
+# IonQ Basis Gate Set
+IONQ_BASIS_GATES = {"rx", "ry", "rz", "cx"}
+
+# Rigetti Basis Gate Set
+RIGETTI_BASIS_GATES = {"rx", "rz", "cz"}
