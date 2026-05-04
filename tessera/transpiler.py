@@ -23,7 +23,15 @@
                                    +--------------------+   +--------------------+   +--------------------+
                                                                                                 |
                                                                                                 V
-                                          Pass 4                    Pass 5                    Pass 6
+                                                                                             Pass 4
+                                                                                +------------------------------+
+                                                                                | BasisTranslation 2           |
+                                                                                | Decompose any new SWAP gates |
+                                                                                | and re-translate to basis    |
+                                                                                +------------------------------+
+                                                                                                |
+                                                                                                V
+                                          Pass 5                    Pass 6                    Pass 7
                                    +--------------------+   +--------------------+   +--------------------+
                                    | RemoveBarriers     |-->| CancelAdjacent     |-->| MergeRotations     |
               (Optimization Stage) | Strip barrier      |   | Remove self-inverse|   | Combine consecutive|
@@ -64,6 +72,7 @@ class TesseraTranspiler:
             BasisTranslationPass(self.backend), 
             DenseLayoutPass(self.coupling_map), 
             BasicSwapRouter(self.coupling_map, self.path_finder),
+            BasisTranslationPass(self.backend),  # Run basis translation again after routing to catch any new non-basis gates
             RemoveBarriersPass(),
             CancelAdjacentPass(self.strict),
             MergeRotationsPass(self.strict, self.epsilon)

@@ -51,4 +51,4 @@ class BasisTranslationPass(TranspilerPass):
                 for gate in gates:
                     actual_qubits = [ins.qubits[i] for i in gate.qubits]
                     instructions.append(TesseraInstruction(gate.name, actual_qubits, ins.clbits, gate.params))
-        return TesseraCircuit(num_qubits, num_clbits, instructions)
+        return TesseraCircuit(num_qubits, num_clbits, instructions, circuit.layout)
