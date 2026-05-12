@@ -19,8 +19,8 @@
     This pass should be run after routing and basis translation, as earlier passes may
     introduce new cancellable gate pairs during decomposition and SWAP insertion.
 '''
-from circuit import TesseraCircuit
-from transpiler_pass import TranspilerPass
+from tessera.circuit import TesseraCircuit
+from tessera.transpiler_pass import TranspilerPass
 
 SELF_INVERSE_GATES = {"x", "cx", "y", "h", "cz", "swap"}
 

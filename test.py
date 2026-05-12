@@ -20,16 +20,16 @@
 import numpy as np
 import time
 from qiskit import QuantumCircuit
-from converters import from_qiskit, to_qiskit
-from pass_manager import TesseraPassManager
-from passes.identity_pass import IdentityPass
-from passes.dense_layout_pass import DenseLayoutPass
-from passes.trivial_pass import TrivialPass
-from passes.basic_swap_router import BasicSwapRouter
-from transpiler import TesseraTranspiler
-from hardware.coupling_map import TesseraCouplingMap
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
+from tessera.converters import from_qiskit, to_qiskit
+from tessera.pass_manager import TesseraPassManager
+from tessera.passes.identity_pass import IdentityPass
+from tessera.passes.dense_layout_pass import DenseLayoutPass
+from tessera.passes.trivial_pass import TrivialPass
+from tessera.passes.basic_swap_router import BasicSwapRouter
+from tessera.transpiler import TesseraTranspiler
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
 
 pi = np.pi
 
@@ -207,7 +207,7 @@ elapsed = time.perf_counter() - start
 
 # Show layout that DenseLayoutPass chose
 tes = from_qiskit(qc_pipeline)
-from passes.dense_layout_pass import DenseLayoutPass
+from tessera.passes.dense_layout_pass import DenseLayoutPass
 layout = DenseLayoutPass(cm_pipeline).run(tes).layout
 print(f"\n  Dense Layout chosen: {layout}")
 print(f"  (q0 and q4 should be close — they interact 4 times)")
@@ -305,7 +305,7 @@ print("  OK")
 # =============================================================
 section("8. Top-Level Transpile API Test")
 
-from api.transpile import transpile as tessera_transpile
+from tessera.api.transpile import transpile as tessera_transpile
 
 # Default usage — no coupling map, defaults to IBM_DEFAULT (FakeNairobiV2, 7 qubits)
 qc_api = QuantumCircuit(3, 3)
@@ -359,4 +359,81 @@ try:
     print("  FAIL — should have raised ValueError")
 except ValueError as e:
     print(f"  Correctly raised ValueError: {e}")
+print("  OK")
+
+# =============================================================
+# 9. IONQ BACKEND TEST
+# =============================================================
+section("9. IonQ Backend Test")
+
+qc_ionq = QuantumCircuit(4, 4)
+qc_ionq.h(0)
+qc_ionq.cx(0, 1)
+qc_ionq.cy(1, 2)
+qc_ionq.swap(2, 3)
+qc_ionq.rz(pi / 4, 0)
+qc_ionq.ry(pi / 3, 1)
+qc_ionq.ccx(0, 1, 2)
+qc_ionq.measure([0, 1, 2, 3], [0, 1, 2, 3])
+
+print(f"  Input: {qc_ionq.num_qubits} qubits, {len(qc_ionq.data)} gates")
+print(f"  Input circuit:\n{qc_ionq}")
+
+start = time.perf_counter()
+result_ionq = tessera_transpile(qc_ionq, backend="IONQ", debug_on=True)
+elapsed = time.perf_counter() - start
+
+ionq_basis = {"rx", "ry", "rz", "cx"}
+gate_names_ionq = [ins.operation.name for ins in result_ionq.data if ins.operation.name != "measure"]
+print(f"\n  Output: {len(result_ionq.data)} gates")
+print(f"  Output gate types: {set(gate_names_ionq)}")
+print(f"  All gates in IonQ basis {{rx, ry, rz, cx}}: {all(g in ionq_basis for g in gate_names_ionq)}")
+swap_count = sum(1 for g in gate_names_ionq if g == "swap")
+print(f"  SWAP gates inserted: {swap_count} (expected 0 — IonQ Aria is all-to-all)")
+print(f"  Time: {elapsed:.4f}s")
+
+print(f"\n  Testing IonQ Forte coupling map override (IONQ_FORTE, 36 qubits, all-to-all)...")
+start = time.perf_counter()
+result_forte = tessera_transpile(qc_ionq, backend="IONQ", coupling_map="IONQ_FORTE", debug_on=True)
+elapsed = time.perf_counter() - start
+print(f"  Output: {len(result_forte.data)} gates")
+print(f"  Time: {elapsed:.4f}s")
+print("  OK")
+
+# =============================================================
+# 10. RIGETTI BACKEND TEST
+# =============================================================
+section("10. Rigetti Backend Test")
+
+qc_rigetti = QuantumCircuit(3, 3)
+qc_rigetti.h(0)
+qc_rigetti.cx(0, 1)
+qc_rigetti.ry(pi / 3, 2)
+qc_rigetti.cz(1, 2)
+qc_rigetti.swap(0, 2)
+qc_rigetti.measure([0, 1, 2], [0, 1, 2])
+
+print(f"  Input: {qc_rigetti.num_qubits} qubits, {len(qc_rigetti.data)} gates")
+print(f"  Input circuit:\n{qc_rigetti}")
+
+start = time.perf_counter()
+result_rigetti = tessera_transpile(qc_rigetti, backend="RIGETTI", coupling_map="RIGETTI_ANKAA_9Q", debug_on=True)
+elapsed = time.perf_counter() - start
+
+rigetti_basis = {"rx", "rz", "cz"}
+gate_names_rigetti = [ins.operation.name for ins in result_rigetti.data if ins.operation.name != "measure"]
+print(f"\n  Output: {len(result_rigetti.data)} gates (Ankaa-9Q-3, 9 qubits)")
+print(f"  Output gate types: {set(gate_names_rigetti)}")
+print(f"  All gates in Rigetti basis {{rx, rz, cz}}: {all(g in rigetti_basis for g in gate_names_rigetti)}")
+print(f"  CX decomposed to CZ-based sequence: {'cx' not in gate_names_rigetti}")
+print(f"  Time: {elapsed:.4f}s")
+
+print(f"\n  Testing Rigetti Ankaa-2 default map (RIGETTI_ANKAA, 84 qubits)...")
+start = time.perf_counter()
+result_ankaa = tessera_transpile(qc_rigetti, backend="RIGETTI", debug_on=True)
+elapsed = time.perf_counter() - start
+gate_names_ankaa = [ins.operation.name for ins in result_ankaa.data if ins.operation.name != "measure"]
+print(f"  Output: {len(result_ankaa.data)} gates")
+print(f"  All gates in Rigetti basis: {all(g in rigetti_basis for g in gate_names_ankaa)}")
+print(f"  Time: {elapsed:.4f}s")
 print("  OK")

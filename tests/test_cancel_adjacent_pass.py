@@ -5,9 +5,9 @@
     Tests happy path, edge cases, and mixed circuit scenarios.
 '''
 import pytest
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from passes.cancel_adjacent_pass import CancelAdjacentPass
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.passes.cancel_adjacent_pass import CancelAdjacentPass
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

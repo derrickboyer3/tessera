@@ -4,9 +4,9 @@
     Covers barrier removal, pass-through of non-barrier instructions,
     edge cases, and preservation of circuit metadata.
 '''
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from passes.remove_barriers_pass import RemoveBarriersPass
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.passes.remove_barriers_pass import RemoveBarriersPass
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

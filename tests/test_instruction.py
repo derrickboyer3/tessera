@@ -1,4 +1,4 @@
-from instruction import TesseraInstruction
+from tessera.instruction import TesseraInstruction
 
 def test_basic_creation():
     inst = TesseraInstruction("h", [0])

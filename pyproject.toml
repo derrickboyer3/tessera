@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tessera"
+version = "0.1.0"
+description = "A lightweight, modular quantum circuit transpiler built in Python"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Derrick Boyer", email = "derrickboyer3455@gmail.com"}]
+license = {text = "PolyForm-Noncommercial-1.0.0"}
+keywords = ["quantum", "transpiler", "qiskit", "compiler"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "qiskit>=2.3",
+    "qiskit-ibm-runtime>=0.46",
+    "numpy>=2.0",
+    "networkx>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "pytest-cov>=7.0",
+    "qiskit-aer>=0.17",
+]
+
+[tool.setuptools.packages.find]
+include = ["tessera*"]
+exclude = ["tests*", "benchmarks*", "qenv*"]

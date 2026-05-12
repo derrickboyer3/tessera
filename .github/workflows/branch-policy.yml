@@ -1,0 +1,27 @@
+name: Branch Policy
+
+on:
+  pull_request:
+    branches:
+      - master
+      - 'release/*'
+
+jobs:
+  source-branch-check:
+    name: Verify source branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce master only accepts PRs from dev
+        if: github.base_ref == 'master'
+        run: |
+          if [ "${{ github.head_ref }}" != "dev" ]; then
+            echo "::error::PRs into master must come from 'dev'. This PR is from '${{ github.head_ref }}'."
+            exit 1
+          fi
+          echo "OK: master PR comes from dev"
+
+      - name: Enforce release branches are read-only
+        if: startsWith(github.base_ref, 'release/')
+        run: |
+          echo "::error::Release branches are immutable snapshots and cannot be modified via PR. Target 'dev' or 'master' instead."
+          exit 1

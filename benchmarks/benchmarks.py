@@ -5,11 +5,31 @@
     a set of benchmark circuits. Measures gate counts, circuit depth, and
     simulation correctness for each circuit.
 
+    After running the circuits, the script prints a diff chart against
+    benchmark_store.json so you can see how this run compared to the stored
+    baselines, including any new bests on gate count or depth.
+
+    Flags:
+        --write          Update benchmark_store.json with this run's numbers.
+                         Refuses to write if any metric on any circuit got
+                         worse than the stored ceiling, or if any simulation
+                         distribution mismatches Qiskit. best_max_* fields
+                         only ever ratchet downward.
+        --allow-loosen   Update benchmark_store.json even if some metrics
+                         regressed. best_max_* fields are still preserved as
+                         monotonic watermarks. Use this when you intentionally
+                         trade one metric for another.
+
     Run with:
         python Tessera/benchmarks/benchmarks.py
+        python Tessera/benchmarks/benchmarks.py --write
+        python Tessera/benchmarks/benchmarks.py --allow-loosen
 
-    Update benchmark.md with results after each run.
+    Update benchmarks.md with results after each run.
 '''
+import argparse
+import datetime
+import json
 import time
 import numpy as np
 from qiskit import QuantumCircuit, transpile as qiskit_transpile
@@ -19,14 +39,15 @@ from qiskit_aer import AerSimulator
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from api.transpile import transpile as tessera_transpile
-from backends.coupling_maps import IBM_DEFAULT_COUPLING_MAP
+from tessera.api.transpile import transpile as tessera_transpile
+from tessera.backends.coupling_maps import IBM_DEFAULT_COUPLING_MAP
 
 pi = np.pi
 SHOTS = 4096
 SIM_TOLERANCE = 0.05
+
+STORE_PATH = os.path.join(os.path.dirname(__file__), 'benchmark_store.json')
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -145,7 +166,105 @@ def make_stress_test():
     qc.measure(list(range(5)), list(range(5)))
     return qc
 
+# ── Store IO ──────────────────────────────────────────────────────────────────
+
+def load_store():
+    if not os.path.exists(STORE_PATH):
+        return {}
+    with open(STORE_PATH) as f:
+        return json.load(f)
+
+def save_store(store):
+    with open(STORE_PATH, 'w') as f:
+        json.dump(store, f, indent=2)
+        f.write('\n')
+
+def status_for(current, stored, best):
+    if stored is None:
+        return "no baseline"
+    if current > stored:
+        return "REGRESSED"
+    if best is not None and current < best:
+        return "NEW BEST!"
+    if current < stored:
+        return "tightened"
+    return "same"
+
+def print_diff_chart(results, store):
+    section("Diff vs benchmark_store.json")
+
+    if not store:
+        print("\n  No benchmark_store.json found — nothing to diff against.")
+        return
+
+    print(f"\n  {'Circuit':<14} {'Metric':<7} {'Current':>8} {'Stored':>8} {'Best':>6} {'Delta':>7}  {'Status':<12}")
+    print(f"  {'-'*70}")
+
+    for r in results:
+        entry = store.get(r['name'], {})
+        for label, current, stored_key, best_key in (
+            ("Gates", r['tessera_gates'], 'max_gates', 'best_max_gates'),
+            ("Depth", r['tessera_depth'], 'max_depth', 'best_max_depth'),
+        ):
+            stored = entry.get(stored_key)
+            best = entry.get(best_key)
+            if stored is None:
+                delta_str = "-"
+            else:
+                delta = current - stored
+                delta_str = f"{delta:+d}" if delta != 0 else "0"
+            stored_str = str(stored) if stored is not None else "-"
+            best_str = str(best) if best is not None else "-"
+            status = status_for(current, stored, best)
+            print(f"  {r['name']:<14} {label:<7} {current:>8} {stored_str:>8} {best_str:>6} {delta_str:>7}  {status:<12}")
+
+def find_regressions(results, store):
+    out = []
+    for r in results:
+        entry = store.get(r['name'], {})
+        for label, current, stored_key in (
+            ("gates", r['tessera_gates'], 'max_gates'),
+            ("depth", r['tessera_depth'], 'max_depth'),
+        ):
+            stored = entry.get(stored_key)
+            if stored is not None and current > stored:
+                out.append((r['name'], label, current, stored))
+    return out
+
+def apply_write(results, store):
+    today = datetime.date.today().isoformat()
+    for r in results:
+        name = r['name']
+        entry = store.get(name, {})
+        new_gates = r['tessera_gates']
+        new_depth = r['tessera_depth']
+        prev_best_gates = entry.get('best_max_gates', new_gates)
+        prev_best_depth = entry.get('best_max_depth', new_depth)
+        store[name] = {
+            'max_gates': new_gates,
+            'best_max_gates': min(prev_best_gates, new_gates),
+            'max_depth': new_depth,
+            'best_max_depth': min(prev_best_depth, new_depth),
+            'last_updated': today,
+        }
+
 # ── Main ──────────────────────────────────────────────────────────────────────
+
+parser = argparse.ArgumentParser(
+    description="Run Tessera vs Qiskit benchmarks and optionally update benchmark_store.json"
+)
+write_group = parser.add_mutually_exclusive_group()
+write_group.add_argument(
+    '--write',
+    action='store_true',
+    help="Update benchmark_store.json. Refuses to write if any metric on any circuit regressed against the stored ceiling, or if any simulation distribution mismatched Qiskit."
+)
+write_group.add_argument(
+    '--allow-loosen',
+    action='store_true',
+    help="Update benchmark_store.json even if some metrics regressed. Best-seen watermarks are preserved."
+)
+args = parser.parse_args()
 
 section("Tessera vs Qiskit Benchmark")
 print(f"  Shots per simulation: {SHOTS}")
@@ -176,4 +295,39 @@ for r in results:
 
 all_match = all(r['sim_match'] for r in results)
 print(f"\n  All simulations match: {all_match}")
-print(f"\n  Copy these results into benchmark.md under a new Run section.")
+
+# ── Diff Chart ────────────────────────────────────────────────────────────────
+store = load_store()
+print_diff_chart(results, store)
+
+# ── Optional Write ────────────────────────────────────────────────────────────
+if args.write or args.allow_loosen:
+    section("Store Update")
+
+    if not all_match:
+        failing = [r['name'] for r in results if not r['sim_match']]
+        print(f"\n  REFUSED: simulation mismatch on: {', '.join(failing)}")
+        print(f"  Will not write to benchmark_store.json with broken simulation.")
+        sys.exit(1)
+
+    regressions = find_regressions(results, store)
+
+    if regressions and not args.allow_loosen:
+        print(f"\n  REFUSED: --write requires every metric to be <= the stored ceiling.")
+        print(f"  The following metrics regressed:")
+        for name, metric, current, stored in regressions:
+            print(f"    {name} {metric}: {current} (stored ceiling: {stored})")
+        print(f"\n  Investigate the regression, or rerun with --allow-loosen if intentional.")
+        sys.exit(1)
+
+    apply_write(results, store)
+    save_store(store)
+
+    print(f"\n  benchmark_store.json updated.")
+    if args.allow_loosen and regressions:
+        print(f"  Loosened the following ceilings (best_* watermarks preserved):")
+        for name, metric, current, stored in regressions:
+            print(f"    {name} {metric}: {stored} -> {current}")
+else:
+    print(f"\n  Copy these results into benchmarks.md under a new Run section.")
+    print(f"  To update benchmark_store.json, rerun with --write (or --allow-loosen).")

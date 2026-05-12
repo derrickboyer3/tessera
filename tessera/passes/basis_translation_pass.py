@@ -18,10 +18,10 @@
 
     Defaults to IBM if no backend is specified.
 '''
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from transpiler_pass import TranspilerPass
-from backends.backend_registry import BACKEND_REGISTRY
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.transpiler_pass import TranspilerPass
+from tessera.backends.backend_registry import BACKEND_REGISTRY
 
 class BasisTranslationPass(TranspilerPass):
     def __init__(self, backend="IBM"):
@@ -51,4 +51,4 @@ class BasisTranslationPass(TranspilerPass):
                 for gate in gates:
                     actual_qubits = [ins.qubits[i] for i in gate.qubits]
                     instructions.append(TesseraInstruction(gate.name, actual_qubits, ins.clbits, gate.params))
-        return TesseraCircuit(num_qubits, num_clbits, instructions)
+        return TesseraCircuit(num_qubits, num_clbits, instructions, circuit.layout)

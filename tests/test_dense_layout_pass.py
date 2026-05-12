@@ -1,7 +1,7 @@
-from circuit import TesseraCircuit
-from instruction import TesseraInstruction
-from hardware.coupling_map import TesseraCouplingMap
-from passes.dense_layout_pass import DenseLayoutPass
+from tessera.circuit import TesseraCircuit
+from tessera.instruction import TesseraInstruction
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.passes.dense_layout_pass import DenseLayoutPass
 import pytest
 
 def make_coupling_map():

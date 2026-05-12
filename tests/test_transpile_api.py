@@ -6,9 +6,9 @@
 '''
 import pytest
 from qiskit import QuantumCircuit
-from api.transpile import transpile
-from hardware.coupling_map import TesseraCouplingMap
-from backends.coupling_maps import COUPLING_MAP_REGISTRY
+from tessera.api.transpile import transpile
+from tessera.hardware.coupling_map import TesseraCouplingMap
+from tessera.backends.coupling_maps import COUPLING_MAP_REGISTRY
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -102,3 +102,23 @@ def test_transpile_circuit_too_large_raises():
     cm = TesseraCouplingMap(2, [(0, 1), (1, 0)])
     with pytest.raises(ValueError, match="too big"):
         transpile(qc, coupling_map=cm)
+
+def test_transpile_with_ionq_backend():
+    qc = make_simple_circuit()
+    result = transpile(qc, backend="IONQ")
+    assert result is not None
+
+def test_transpile_with_rigetti_backend():
+    qc = make_simple_circuit()
+    result = transpile(qc, backend="RIGETTI")
+    assert result is not None
+
+def test_transpile_ionq_with_forte_map():
+    qc = make_simple_circuit()
+    result = transpile(qc, backend="IONQ", coupling_map="IONQ_FORTE")
+    assert result is not None
+
+def test_transpile_rigetti_with_ankaa_9q_map():
+    qc = make_simple_circuit()
+    result = transpile(qc, backend="RIGETTI", coupling_map="RIGETTI_ANKAA_9Q")
+    assert result is not None

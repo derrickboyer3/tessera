@@ -15,26 +15,27 @@
 
     Available backends:
         - IBM: basis gates {cx, rz, sx, x, u}, defaults to FakeNairobi (7 qubit) topology
+        - IONQ: basis gates {rx, ry, rz, cx}, defaults to Aria (25 qubit) topology
+        - RIGETTI: basis gates {rx, rz, cz}, defaults to Ankaa (84 qubit) topology
 '''
-from backends.basis_gate_sets import IBM_BASIS_GATES
-from backends.decomposition_maps import IBM_DECOMP_MAP
+from tessera.backends.basis_gate_sets import IBM_BASIS_GATES, IONQ_BASIS_GATES, RIGETTI_BASIS_GATES
+from tessera.backends.decomposition_maps import IBM_DECOMP_MAP, IONQ_DECOMP_MAP, RIGETTI_DECOMP_MAP
 
 BACKEND_REGISTRY = {
     "IBM": {
         "basis_gates": IBM_BASIS_GATES,
         "decomp_map": IBM_DECOMP_MAP,
         "coupling_map": "IBM_DEFAULT"
-    }
-    # Add new backend registrations here
-}
-from backends.basis_gate_sets import IBM_BASIS_GATES
-from backends.decomposition_maps import IBM_DECOMP_MAP
-
-BACKEND_REGISTRY = {
-    "IBM": {
-        "basis_gates": IBM_BASIS_GATES,
-        "decomp_map": IBM_DECOMP_MAP,
-        "coupling_map": "IBM_DEFAULT"
+    },
+    "IONQ": {
+        "basis_gates": IONQ_BASIS_GATES,
+        "decomp_map": IONQ_DECOMP_MAP,
+        "coupling_map": "IONQ_ARIA"
+    },
+    "RIGETTI": {
+        "basis_gates": RIGETTI_BASIS_GATES,
+        "decomp_map": RIGETTI_DECOMP_MAP,
+        "coupling_map": "RIGETTI_ANKAA"
     }
     # Add new backend registrations here
 }

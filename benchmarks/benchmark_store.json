@@ -1,0 +1,30 @@
+{
+  "Bell State": {
+    "max_gates": 6,
+    "best_max_gates": 6,
+    "max_depth": 5,
+    "best_max_depth": 5,
+    "last_updated": "2026-05-04"
+  },
+  "GHZ State": {
+    "max_gates": 8,
+    "best_max_gates": 8,
+    "max_depth": 6,
+    "best_max_depth": 6,
+    "last_updated": "2026-05-04"
+  },
+  "QFT-like": {
+    "max_gates": 31,
+    "best_max_gates": 31,
+    "max_depth": 15,
+    "best_max_depth": 15,
+    "last_updated": "2026-05-04"
+  },
+  "Stress Test": {
+    "max_gates": 35,
+    "best_max_gates": 35,
+    "max_depth": 18,
+    "best_max_depth": 18,
+    "last_updated": "2026-05-04"
+  }
+}

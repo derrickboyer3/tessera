@@ -23,7 +23,15 @@
                                    +--------------------+   +--------------------+   +--------------------+
                                                                                                 |
                                                                                                 V
-                                          Pass 4                    Pass 5                    Pass 6
+                                                                                             Pass 4
+                                                                                +------------------------------+
+                                                                                | BasisTranslation 2           |
+                                                                                | Decompose any new SWAP gates |
+                                                                                | and re-translate to basis    |
+                                                                                +------------------------------+
+                                                                                                |
+                                                                                                V
+                                          Pass 5                    Pass 6                    Pass 7
                                    +--------------------+   +--------------------+   +--------------------+
                                    | RemoveBarriers     |-->| CancelAdjacent     |-->| MergeRotations     |
               (Optimization Stage) | Strip barrier      |   | Remove self-inverse|   | Combine consecutive|
@@ -37,14 +45,14 @@
                                                                                  +---------------------------+
                                             (Conversion Stage 2)
 '''
-from converters import from_qiskit, to_qiskit
-from pass_manager import TesseraPassManager
-from passes.basis_translation_pass import BasisTranslationPass
-from passes.dense_layout_pass import DenseLayoutPass
-from passes.basic_swap_router import BasicSwapRouter
-from passes.remove_barriers_pass import RemoveBarriersPass
-from passes.cancel_adjacent_pass import CancelAdjacentPass
-from passes.merge_rotations_pass import MergeRotationsPass
+from tessera.converters import from_qiskit, to_qiskit
+from tessera.pass_manager import TesseraPassManager
+from tessera.passes.basis_translation_pass import BasisTranslationPass
+from tessera.passes.dense_layout_pass import DenseLayoutPass
+from tessera.passes.basic_swap_router import BasicSwapRouter
+from tessera.passes.remove_barriers_pass import RemoveBarriersPass
+from tessera.passes.cancel_adjacent_pass import CancelAdjacentPass
+from tessera.passes.merge_rotations_pass import MergeRotationsPass
 
 def log_before(pass_, circuit):
     print(f"[Tessera] Running pass: {pass_.name} | Gates: {len(circuit.instructions)}")
@@ -64,6 +72,7 @@ class TesseraTranspiler:
             BasisTranslationPass(self.backend), 
             DenseLayoutPass(self.coupling_map), 
             BasicSwapRouter(self.coupling_map, self.path_finder),
+            BasisTranslationPass(self.backend),  # Run basis translation again after routing to catch any new non-basis gates
             RemoveBarriersPass(),
             CancelAdjacentPass(self.strict),
             MergeRotationsPass(self.strict, self.epsilon)

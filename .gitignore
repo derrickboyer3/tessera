@@ -26,3 +26,11 @@ coverage.xml
 # OS
 .DS_Store
 Thumbs.db
+
+.claude
+
+# Packaging
+*.egg-info/
+*.egg
+build/
+dist/
