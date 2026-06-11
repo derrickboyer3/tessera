@@ -3,9 +3,10 @@
     ------------------
     The Tessera Transpiler is the class that allows a user to transpile their Qiskit circuit for a specific backend. It is initialized with
     the circuit itself, a CouplingMap representing the target hardware topology, the backend the user wants to use (IBM, etc.), an optional
-    custom path-finding strategy, an optional strict flag for optimization passes, an optional epsilon for rotation merging, and an optional
-    debug flag. The execute function takes the Qiskit circuit, converts it to a Tessera circuit, runs through each pass in the pass manager,
-    converts the transpiled Tessera circuit back to Qiskit, and returns.
+    custom path-finding strategy, an optional strict flag for optimization passes, an optional epsilon for rotation merging, an optional
+    optimization_iterations count (1 default, positive int for fixed loops, -1 for convergence), an optional max_iterations safety cap for
+    convergence mode, and an optional debug flag. The execute function takes the Qiskit circuit, converts it to a Tessera circuit, runs
+    through each pass in the pass manager, converts the transpiled Tessera circuit back to Qiskit, and returns.
 
     High Level Overview:
 
@@ -31,15 +32,23 @@
                                                                                 +------------------------------+
                                                                                                 |
                                                                                                 V
-                                          Pass 5                    Pass 6                    Pass 7
-                                   +--------------------+   +--------------------+   +--------------------+
-                                   | RemoveBarriers     |-->| CancelAdjacent     |-->| MergeRotations     |
-              (Optimization Stage) | Strip barrier      |   | Remove self-inverse|   | Combine consecutive|
-                                   | instructions       |   | gate pairs         |   | rotation gates     |
-                                   +--------------------+   +--------------------+   +--------------------+
-                                                                                                |
-                                                                                                | to_qiskit()
-                                                                                                V
+                                                            Pass 5                            Pass 6
+                                                    +--------------------+   +---------------------------------------+
+                                                    | RemoveBarriers     |-->| OptimizationLoopPass                  |
+                                    (Optimization)  | Strip barrier      |   | Loop the inner passes either N times  |
+                                                    | instructions       |   | or until gate count converges:        |
+                                                    +--------------------+   |  +---------------------+              |
+                                                                             |  | CancelAdjacentPass  |              |
+                                                                             |  +---------------------+              |
+                                                                             |            |                          |
+                                                                             |            V                          |
+                                                                             |  +---------------------+              |
+                                                                             |  | MergeRotationsPass  |              |
+                                                                             |  +---------------------+              |
+                                                                             +---------------------------------------+
+                                                                                              |
+                                                                                              | to_qiskit()
+                                                                                              V
                                         return back                              +---------------------------+
     <============================================================================| Transpiled Qiskit Circuit |
                                                                                  +---------------------------+
@@ -53,6 +62,7 @@ from tessera.passes.basic_swap_router import BasicSwapRouter
 from tessera.passes.remove_barriers_pass import RemoveBarriersPass
 from tessera.passes.cancel_adjacent_pass import CancelAdjacentPass
 from tessera.passes.merge_rotations_pass import MergeRotationsPass
+from tessera.passes.optimization_loop_pass import OptimizationLoopPass
 
 def log_before(pass_, circuit):
     print(f"[Tessera] Running pass: {pass_.name} | Gates: {len(circuit.instructions)}")
@@ -61,24 +71,26 @@ def log_after(pass_, circuit):
     print(f"[Tessera] Finished pass: {pass_.name} | Gates: {len(circuit.instructions)}")
 
 class TesseraTranspiler:
-    def __init__(self, circuit, coupling_map, backend="IBM", pathfinder=None, strict=True, epsilon=1e-9, debug_on=False):
+    def __init__(self, circuit, coupling_map, backend="IBM", pathfinder=None, strict=True, epsilon=1e-9, optimization_iterations=1, max_iterations=1000, debug_on=False):
         self.circuit = circuit
         self.backend = backend
         self.coupling_map = coupling_map
         self.path_finder = pathfinder
         self.strict = strict
         self.epsilon = epsilon
+        self.optimization_iterations = optimization_iterations
+        self.max_iterations = max_iterations
+        self.debug_on = debug_on
+        optimization_passes = [CancelAdjacentPass(self.strict), MergeRotationsPass(self.strict, self.epsilon)]
         passes = [
             BasisTranslationPass(self.backend), 
             DenseLayoutPass(self.coupling_map), 
             BasicSwapRouter(self.coupling_map, self.path_finder),
             BasisTranslationPass(self.backend),  # Run basis translation again after routing to catch any new non-basis gates
             RemoveBarriersPass(),
-            CancelAdjacentPass(self.strict),
-            MergeRotationsPass(self.strict, self.epsilon)
+            OptimizationLoopPass(optimization_passes, self.optimization_iterations, self.max_iterations, self.debug_on)
         ]
         self.pass_manager = TesseraPassManager(passes)
-        self.debug_on = debug_on
 
     def execute(self):
         tes_circ = from_qiskit(self.circuit)

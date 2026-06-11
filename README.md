@@ -26,6 +26,7 @@ Tessera/
 │   │   ├── remove_barriers_pass.py
 │   │   ├── cancel_adjacent_pass.py
 │   │   ├── merge_rotations_pass.py
+│   │   ├── optimization_loop_pass.py
 │   │   ├── trivial_pass.py
 │   │   └── identity_pass.py
 │   ├── circuit.py              # TesseraCircuit dataclass
@@ -109,10 +110,12 @@ cm = TesseraCouplingMap(3, [(0, 1), (1, 0), (1, 2), (2, 1)])
 transpiled = transpile(
     qc,
     backend="IBM",
-    coupling_map=cm,       # or pass a string key like "IBM_BRISBANE"
-    strict=False,          # use commutative optimization mode
-    epsilon=1e-6,          # custom rotation merge threshold
-    debug_on=True          # print per-pass gate counts
+    coupling_map=cm,             # or pass a string key like "IBM_BRISBANE"
+    strict=False,                # use commutative optimization mode
+    epsilon=1e-6,                # custom rotation merge threshold
+    optimization_iterations=-1,  # loop optimization passes until gate count converges
+    max_iterations=500,          # safety cap for convergence mode (default 1000)
+    debug_on=True                # print per-pass gate counts
 )
 ```
 
@@ -121,7 +124,7 @@ transpiled = transpile(
 ## Transpiler Pipeline
 
 ```
-BasisTranslation -> DenseLayout -> BasicSwapRouter -> BasisTranslation2 -> RemoveBarriers -> CancelAdjacent -> MergeRotations
+BasisTranslation -> DenseLayout -> BasicSwapRouter -> BasisTranslation2 -> RemoveBarriers -> OptimizationLoop(CancelAdjacent -> MergeRotations)
 ```
 
 | Stage | Pass | Description |
@@ -131,8 +134,9 @@ BasisTranslation -> DenseLayout -> BasicSwapRouter -> BasisTranslation2 -> Remov
 | 3 | `BasicSwapRouter` | Applies layout and inserts SWAP gates for non-adjacent two-qubit gates |
 | 4 | `BasisTranslationPass` | Re-runs basis translation to decompose any SWAP gates inserted by routing |
 | 5 | `RemoveBarriersPass` | Strips barrier instructions before optimization |
-| 6 | `CancelAdjacentPass` | Removes pairs of adjacent self-inverse gates (X X, H H, CX CX, etc.) |
-| 7 | `MergeRotationsPass` | Combines consecutive rotation gates (Rz(a) Rz(b) -> Rz(a+b)) |
+| 6 | `OptimizationLoopPass` | Wraps the optimization passes and runs them either a fixed number of iterations or until gate count converges |
+| 6a | &nbsp;&nbsp;`CancelAdjacentPass` | Removes pairs of adjacent self-inverse gates (X X, H H, CX CX, etc.) |
+| 6b | &nbsp;&nbsp;`MergeRotationsPass` | Combines consecutive rotation gates (Rz(a) Rz(b) -> Rz(a+b)) |
 
 ---
 
@@ -244,7 +248,7 @@ class MyPass(TranspilerPass):
 - [x] Benchmark suite vs Qiskit
 - [x] Regression test suite
 - [x] IonQ and Rigetti backend support
-- [ ] Commutative gate rewriting (improve CancelAdjacentPass)
-- [ ] Multi-pass optimization loop
-- [ ] Noise-aware layout
+- [x] Commutative gate rewriting (improve CancelAdjacentPass)
+- [x] Multi-pass optimization loop
 - [ ] SABRE or A* routing algorithm
+- [ ] Noise-aware layout

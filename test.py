@@ -16,6 +16,11 @@
         6. Full Pipeline Test      — End to end through TesseraTranspiler
         7. Optimization Passes Test — CancelAdjacentPass, MergeRotationsPass, RemoveBarriersPass
         8. Top-Level Transpile API Test — transpile() function, coupling map resolution, error handling
+        9. IonQ Backend Test — IonQ basis, all-to-all coupling, coupling map override
+       10. Rigetti Backend Test — Rigetti basis, CX-via-CZ decomposition, coupling map override
+       11. Commutative Mode Deep Dive — strict vs commutative on a tangled multi-qubit circuit
+       12. Optimization Loop Test — iterations=1 vs N vs -1 (convergence) on a circuit that chains optimizations
+        *. Full Optimization Comparison — Tessera at max vs Qiskit at optimization_level=3 (always last; curiosity-only)
 '''
 import numpy as np
 import time
@@ -436,4 +441,204 @@ gate_names_ankaa = [ins.operation.name for ins in result_ankaa.data if ins.opera
 print(f"  Output: {len(result_ankaa.data)} gates")
 print(f"  All gates in Rigetti basis: {all(g in rigetti_basis for g in gate_names_ankaa)}")
 print(f"  Time: {elapsed:.4f}s")
+print("  OK")
+
+# =============================================================
+# 11. COMMUTATIVE MODE DEEP DIVE
+# =============================================================
+section("11. Commutative Mode Deep Dive")
+
+# A tangled circuit where many cancellations and merges are blocked in strict
+# mode by interleaved instructions on disjoint qubits — but legal under commutation.
+qc_comm = QuantumCircuit(4, 4)
+qc_comm.h(0)
+qc_comm.x(1)
+qc_comm.h(2)
+qc_comm.rz(pi / 4, 3)
+qc_comm.h(0)               # cancels with h(0) above (commutative only — gates between disjoint from q0)
+qc_comm.x(1)               # cancels with x(1) above (commutative only — gates between disjoint from q1)
+qc_comm.cx(2, 3)
+qc_comm.cx(0, 1)
+qc_comm.rz(pi / 8, 2)
+qc_comm.x(3)
+qc_comm.x(3)               # adjacent — cancels in both modes
+qc_comm.rz(pi / 8, 2)      # merges with rz(pi/8, 2) above (commutative only — x(3)x(3) disjoint from q2)
+qc_comm.cx(0, 1)           # cancels with cx(0,1) above (commutative only — rz(2), x(3)x(3) disjoint from q0/q1)
+qc_comm.h(3)
+qc_comm.h(3)               # adjacent — cancels in both modes
+qc_comm.measure([0, 1, 2, 3], [0, 1, 2, 3])
+
+cm_comm = TesseraCouplingMap(4, [(0,1),(1,0),(1,2),(2,1),(2,3),(3,2)])
+
+print(f"  Input: {len(qc_comm.data)} gates")
+print(f"  Input circuit:\n{qc_comm}")
+
+print(f"\n  --- Strict mode (strict=True) ---")
+start = time.perf_counter()
+result_strict = tessera_transpile(qc_comm, coupling_map=cm_comm, strict=True, debug_on=True)
+elapsed_strict = time.perf_counter() - start
+print(f"  Output: {len(result_strict.data)} gates | Time: {elapsed_strict:.4f}s")
+
+print(f"\n  --- Commutative mode (strict=False) ---")
+start = time.perf_counter()
+result_comm = tessera_transpile(qc_comm, coupling_map=cm_comm, strict=False, debug_on=True)
+elapsed_comm = time.perf_counter() - start
+print(f"  Output: {len(result_comm.data)} gates | Time: {elapsed_comm:.4f}s")
+
+print(f"\n  Strict output gates:      {len(result_strict.data)}")
+print(f"  Commutative output gates: {len(result_comm.data)}")
+print(f"  Reduction from commutation: {len(result_strict.data) - len(result_comm.data)} gates")
+print("  OK")
+
+# =============================================================
+# 12. OPTIMIZATION LOOP TEST
+# =============================================================
+section("12. Optimization Loop Test")
+
+# A circuit constructed so optimizations chain: a single pass only catches
+# surface-level reductions; further iterations expose new adjacencies as the
+# circuit shrinks.
+qc_loop = QuantumCircuit(3, 3)
+# 8 small rz on q0 — strict merge halves the count each iteration (8 -> 4 -> 2 -> 1)
+qc_loop.rz(pi / 16, 0)
+qc_loop.rz(pi / 16, 0)
+qc_loop.rz(pi / 16, 0)
+qc_loop.rz(pi / 16, 0)
+qc_loop.rz(pi / 16, 0)
+qc_loop.rz(pi / 16, 0)
+qc_loop.rz(pi / 16, 0)
+qc_loop.rz(pi / 16, 0)
+# H-X-X-H-H on q1 — iter 1 cancels X-X leaving H-H-H; iter 2 cancels an H-H leaving H
+qc_loop.h(1)
+qc_loop.x(1)
+qc_loop.x(1)
+qc_loop.h(1)
+qc_loop.h(1)
+# CX, H-H, CX on q1-q2 — iter 1 drops H-H leaving CX-CX adjacent; iter 2 cancels the CX pair
+qc_loop.cx(1, 2)
+qc_loop.h(2)
+qc_loop.h(2)
+qc_loop.cx(1, 2)
+# 4 rotations on q2 that fold across iterations once surrounding gates collapse
+qc_loop.rz(pi / 8, 2)
+qc_loop.rz(pi / 8, 2)
+qc_loop.rz(pi / 8, 2)
+qc_loop.rz(pi / 8, 2)
+qc_loop.measure([0, 1, 2], [0, 1, 2])
+
+cm_loop = TesseraCouplingMap(3, [(0,1),(1,0),(1,2),(2,1)])
+
+print(f"  Input: {len(qc_loop.data)} gates")
+print(f"  Input circuit:\n{qc_loop}")
+
+print(f"\n  --- optimization_iterations=1 (default, single pass) ---")
+start = time.perf_counter()
+result_one = tessera_transpile(qc_loop, coupling_map=cm_loop, optimization_iterations=1, debug_on=True)
+elapsed_one = time.perf_counter() - start
+print(f"  Output: {len(result_one.data)} gates | Time: {elapsed_one:.4f}s")
+
+print(f"\n  --- optimization_iterations=5 (fixed loop) ---")
+start = time.perf_counter()
+result_five = tessera_transpile(qc_loop, coupling_map=cm_loop, optimization_iterations=5, debug_on=True)
+elapsed_five = time.perf_counter() - start
+print(f"  Output: {len(result_five.data)} gates | Time: {elapsed_five:.4f}s")
+
+print(f"\n  --- optimization_iterations=-1 (run until convergence) ---")
+start = time.perf_counter()
+result_conv = tessera_transpile(qc_loop, coupling_map=cm_loop, optimization_iterations=-1, debug_on=True)
+elapsed_conv = time.perf_counter() - start
+print(f"  Output: {len(result_conv.data)} gates | Time: {elapsed_conv:.4f}s")
+
+print(f"\n  iterations=1:  {len(result_one.data)} gates")
+print(f"  iterations=5:  {len(result_five.data)} gates")
+print(f"  iterations=-1: {len(result_conv.data)} gates (converged)")
+print(f"  Extra reduction from looping: {len(result_one.data) - len(result_conv.data)} gates")
+
+# Demonstrate the max_iterations cap behavior in convergence mode
+print(f"\n  --- optimization_iterations=-1 with max_iterations=2 (cap fires early) ---")
+start = time.perf_counter()
+result_cap = tessera_transpile(qc_loop, coupling_map=cm_loop, optimization_iterations=-1, max_iterations=2, debug_on=True)
+elapsed_cap = time.perf_counter() - start
+print(f"  Output: {len(result_cap.data)} gates | Time: {elapsed_cap:.4f}s")
+print(f"  (Should print 'Reached maximum iterations' notice above if cap was hit)")
+print("  OK")
+
+# =============================================================
+# FULL OPTIMIZATION COMPARISON (always last)
+# =============================================================
+# This section is purely for curiosity. Regression tests and the benchmark
+# suite compare Tessera-at-default against Qiskit-at-default. Here we crank
+# both transpilers to their max optimization settings on the same circuit
+# and compare. Should always be the last section of this file.
+section("Full Optimization Comparison — Tessera (max) vs Qiskit (level 3)")
+
+from qiskit import transpile as qiskit_transpile
+from qiskit_ibm_runtime.fake_provider import FakeNairobiV2
+
+# A meaty circuit with cancellable pairs, mergeable rotations, multi-qubit
+# entanglement, and non-basis gates — enough surface for both transpilers
+# to actually do work.
+qc_cmp = QuantumCircuit(5, 5)
+qc_cmp.h(0)
+qc_cmp.h(0)                      # cancels
+qc_cmp.cx(0, 1)
+qc_cmp.cx(1, 2)
+qc_cmp.cx(2, 3)
+qc_cmp.cx(3, 4)
+qc_cmp.rz(pi / 8, 0)
+qc_cmp.rz(pi / 8, 0)             # merge
+qc_cmp.rz(pi / 8, 0)             # merge
+qc_cmp.x(2)
+qc_cmp.x(2)                      # cancels
+qc_cmp.ccx(0, 1, 2)
+qc_cmp.swap(3, 4)
+qc_cmp.cy(1, 2)
+qc_cmp.ry(pi / 3, 3)
+qc_cmp.ry(pi / 6, 3)             # merge
+qc_cmp.cp(pi / 4, 0, 1)
+qc_cmp.h(4)
+qc_cmp.h(4)                      # cancels
+qc_cmp.cx(0, 4)
+qc_cmp.cx(0, 4)                  # cancels
+qc_cmp.barrier()
+qc_cmp.rz(pi / 16, 2)
+qc_cmp.rz(pi / 16, 2)            # merge
+qc_cmp.rz(pi / 16, 2)            # merge
+qc_cmp.rz(pi / 16, 2)            # merge
+qc_cmp.measure([0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
+
+print(f"  Input: {qc_cmp.num_qubits} qubits, {len(qc_cmp.data)} gates")
+
+# Tessera at full optimization: convergence loop + commutative mode
+print(f"\n  --- Tessera (optimization_iterations=-1, strict=False) ---")
+start = time.perf_counter()
+result_tessera_max = tessera_transpile(
+    qc_cmp,
+    backend="IBM",
+    strict=False,
+    optimization_iterations=-1,
+)
+elapsed_tessera = time.perf_counter() - start
+tessera_gates = len(result_tessera_max.data)
+tessera_depth = result_tessera_max.depth()
+print(f"  Output: {tessera_gates} gates | Depth: {tessera_depth} | Time: {elapsed_tessera:.4f}s")
+
+# Qiskit at max optimization: optimization_level=3
+print(f"\n  --- Qiskit (optimization_level=3) ---")
+qiskit_backend = FakeNairobiV2()
+start = time.perf_counter()
+result_qiskit_max = qiskit_transpile(qc_cmp, backend=qiskit_backend, optimization_level=3)
+elapsed_qiskit = time.perf_counter() - start
+qiskit_gates = len(result_qiskit_max.data)
+qiskit_depth = result_qiskit_max.depth()
+print(f"  Output: {qiskit_gates} gates | Depth: {qiskit_depth} | Time: {elapsed_qiskit:.4f}s")
+
+# Side-by-side
+print(f"\n  ───────────────────────────────────────────────")
+print(f"                    Tessera     Qiskit")
+print(f"  Output gates:     {tessera_gates:<11}{qiskit_gates}")
+print(f"  Circuit depth:    {tessera_depth:<11}{qiskit_depth}")
+print(f"  Transpile time:   {elapsed_tessera:.4f}s    {elapsed_qiskit:.4f}s")
+print(f"  ───────────────────────────────────────────────")
+print(f"  (Curiosity-only; regression suite locks default vs default, not max vs max.)")
 print("  OK")

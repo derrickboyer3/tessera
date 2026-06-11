@@ -15,6 +15,8 @@
         pathfinder:   Optional custom path-finding callable for the swap router (default: BFS)
         strict:       If True, optimization passes use strict adjacency mode (default: True)
         epsilon:      Threshold for dropping near-zero rotation angles (default: 1e-9)
+        optimization_iterations: 1 (default) | positive int = fixed iterations | -1 = run until gate count converges
+        max_iterations:          Safety cap on loop iterations when optimization_iterations is -1 (default: 1000)
         debug_on:     If True, prints per-pass gate counts and total transpile time (default: False)
 
     Returns:
@@ -42,7 +44,7 @@ from tessera.backends.coupling_maps import COUPLING_MAP_REGISTRY
 from tessera.hardware.coupling_map import TesseraCouplingMap
 from tessera.transpiler import TesseraTranspiler
 
-def transpile(circuit, backend="IBM", coupling_map=None, pathfinder=None, strict=True, epsilon=1e-9, debug_on=False):
+def transpile(circuit, backend="IBM", coupling_map=None, pathfinder=None, strict=True, epsilon=1e-9, optimization_iterations=1, max_iterations=1000, debug_on=False):
     # Step 1: Validate Backend
     if backend not in BACKEND_REGISTRY:
         raise ValueError(f"[Tessera]: Backend chosen does not exist in current BACKEND_REGISTRY.\n\tChosen {backend}\n\tTry \"IBM\"")
@@ -61,7 +63,7 @@ def transpile(circuit, backend="IBM", coupling_map=None, pathfinder=None, strict
         raise ValueError(f"Circuit with {circuit.num_qubits} qubits is too big for coupling map with {resolved_coupling_map.num_qubits} qubits.")
 
     
-    transpiler = TesseraTranspiler(circuit, resolved_coupling_map, backend, pathfinder, strict, epsilon, debug_on)
+    transpiler = TesseraTranspiler(circuit, resolved_coupling_map, backend, pathfinder, strict, epsilon, optimization_iterations, max_iterations, debug_on)
     start = time.perf_counter()
     result = transpiler.execute()
     elapsed = time.perf_counter() - start

@@ -91,6 +91,7 @@ not application code.
 | passes/cancel_adjacent_pass.py            | 100%   |                                              |
 | passes/merge_rotations_pass.py            | 100%   |                                              |
 | passes/remove_barriers_pass.py            | 100%   |                                              |
+| passes/optimization_loop_pass.py          | 100%   |                                              |
 | api/transpile.py                          | 100%   |                                              |
 
 ---
