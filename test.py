@@ -11,7 +11,7 @@
         1. Converter Tests         — from_qiskit() and to_qiskit()
         2. Pass Manager Test       — IdentityPass through TesseraPassManager
         3. Basis Translation Test  — Full gate set through BasisTranslationPass
-        4. Layout Pass Test        — TrivialPass vs DenseLayoutPass comparison
+        4. Layout Pass Test        — LayoutPass with "trivial" vs "dense" algorithm comparison
         5. Swap Router Test        — BasicSwapRouter on non-adjacent circuit
         6. Full Pipeline Test      — End to end through TesseraTranspiler
         7. Optimization Passes Test — CancelAdjacentPass, MergeRotationsPass, RemoveBarriersPass
@@ -20,6 +20,8 @@
        10. Rigetti Backend Test — Rigetti basis, CX-via-CZ decomposition, coupling map override
        11. Commutative Mode Deep Dive — strict vs commutative on a tangled multi-qubit circuit
        12. Optimization Loop Test — iterations=1 vs N vs -1 (convergence) on a circuit that chains optimizations
+       13. Layout Algorithm Comparison — trivial vs dense vs sabre on a circuit with concentrated interactions
+       14. Routing Algorithm Comparison — bfs vs a_star vs sabre with layout fixed to trivial
         *. Full Optimization Comparison — Tessera at max vs Qiskit at optimization_level=3 (always last; curiosity-only)
 '''
 import numpy as np
@@ -28,8 +30,7 @@ from qiskit import QuantumCircuit
 from tessera.converters import from_qiskit, to_qiskit
 from tessera.pass_manager import TesseraPassManager
 from tessera.passes.identity_pass import IdentityPass
-from tessera.passes.dense_layout_pass import DenseLayoutPass
-from tessera.passes.trivial_pass import TrivialPass
+from tessera.passes.layout_pass import LayoutPass
 from tessera.passes.basic_swap_router import BasicSwapRouter
 from tessera.transpiler import TesseraTranspiler
 from tessera.hardware.coupling_map import TesseraCouplingMap
@@ -130,8 +131,8 @@ layout_circuit = TesseraCircuit(3, 0, [
 ])
 cm_layout = TesseraCouplingMap(5, [(0,1), (1,2), (2,3), (3,4)])
 
-trivial_result = TrivialPass(cm_layout).run(layout_circuit)
-dense_result = DenseLayoutPass(cm_layout).run(layout_circuit)
+trivial_result = LayoutPass(cm_layout, "trivial").run(layout_circuit)
+dense_result = LayoutPass(cm_layout, "dense").run(layout_circuit)
 
 print(f"  Trivial Layout: {trivial_result.layout}")
 print(f"  Dense Layout:   {dense_result.layout}")
@@ -163,8 +164,8 @@ section("6. Full Pipeline Test")
 
 # 5-qubit circuit designed to stress all three passes:
 # - Many non-basis gates force BasisTranslationPass to work hard
-# - Frequent interactions between specific pairs force DenseLayoutPass
-#   to produce a non-trivial layout
+# - Frequent interactions between specific pairs force the dense layout
+#   algorithm to produce a non-trivial layout
 # - Non-adjacent gates after layout force BasicSwapRouter to insert swaps
 qc_pipeline = QuantumCircuit(5, 5)
 
@@ -210,10 +211,9 @@ start = time.perf_counter()
 final = transpiler.execute()
 elapsed = time.perf_counter() - start
 
-# Show layout that DenseLayoutPass chose
+# Show layout that the dense algorithm chose
 tes = from_qiskit(qc_pipeline)
-from tessera.passes.dense_layout_pass import DenseLayoutPass
-layout = DenseLayoutPass(cm_pipeline).run(tes).layout
+layout = LayoutPass(cm_pipeline, "dense").run(tes).layout
 print(f"\n  Dense Layout chosen: {layout}")
 print(f"  (q0 and q4 should be close — they interact 4 times)")
 print(f"  q0<->q4 distance: {cm_pipeline.distance(layout[0], layout[4])}")
@@ -564,6 +564,90 @@ print(f"  (Should print 'Reached maximum iterations' notice above if cap was hit
 print("  OK")
 
 # =============================================================
+# 13. LAYOUT ALGORITHM COMPARISON
+# =============================================================
+section("13. Layout Algorithm Comparison")
+
+# A circuit where logical interactions are concentrated on specific pairs
+# that are far apart under a trivial mapping — gives sabre and dense room
+# to outperform trivial. Run on a heavy-hex (FakeNairobiV2) topology.
+qc_layout_cmp = QuantumCircuit(5, 5)
+# Heavy interaction between q0<->q4 and q1<->q3 — trivial leaves these far apart
+for _ in range(4):
+    qc_layout_cmp.cx(0, 4)
+for _ in range(3):
+    qc_layout_cmp.cx(1, 3)
+qc_layout_cmp.cx(2, 4)
+qc_layout_cmp.cx(0, 1)
+qc_layout_cmp.measure([0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
+
+print(f"  Input: {qc_layout_cmp.num_qubits} qubits, {len(qc_layout_cmp.data)} gates")
+print(f"  Hot pairs: q0<->q4 (4x), q1<->q3 (3x)")
+
+layout_results = {}
+for algo in ("trivial", "dense", "sabre"):
+    print(f"\n  --- layout_algorithm=\"{algo}\" ---")
+    start = time.perf_counter()
+    result = tessera_transpile(qc_layout_cmp, backend="IBM", layout_algorithm=algo)
+    elapsed = time.perf_counter() - start
+    gate_names = [ins.operation.name for ins in result.data]
+    cx_count = gate_names.count("cx")
+    layout_results[algo] = (len(result.data), result.depth(), cx_count, elapsed)
+    print(f"  Output: {len(result.data)} gates | Depth: {result.depth()} | CX gates: {cx_count} | Time: {elapsed:.4f}s")
+
+print(f"\n  ───────────────────────────────────────────────")
+print(f"               Gates   Depth   CX      Time")
+for algo, (g, d, c, t) in layout_results.items():
+    print(f"  {algo:<10}   {g:<7} {d:<7} {c:<7} {t:.4f}s")
+print(f"  ───────────────────────────────────────────────")
+print(f"  (Fewer SWAPs = layout did a better job placing interacting qubits adjacent.)")
+print("  OK")
+
+# =============================================================
+# 14. ROUTING ALGORITHM COMPARISON
+# =============================================================
+section("14. Routing Algorithm Comparison")
+
+# Use TRIVIAL layout so routing has real work to do — otherwise a smart
+# layout might pre-place qubits adjacent and mask routing differences.
+qc_routing_cmp = QuantumCircuit(5, 5)
+# Force several non-adjacent two-qubit gates that routing has to span
+qc_routing_cmp.cx(0, 4)
+qc_routing_cmp.cx(1, 3)
+qc_routing_cmp.cx(0, 3)
+qc_routing_cmp.cx(2, 4)
+qc_routing_cmp.cx(0, 2)
+qc_routing_cmp.cx(1, 4)
+qc_routing_cmp.measure([0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
+
+print(f"  Input: {qc_routing_cmp.num_qubits} qubits, {len(qc_routing_cmp.data)} gates")
+print(f"  Layout fixed to \"trivial\" so routing is the only variable.")
+
+routing_results = {}
+for algo in ("bfs", "a_star", "sabre"):
+    print(f"\n  --- pathfinder=\"{algo}\" ---")
+    start = time.perf_counter()
+    result = tessera_transpile(
+        qc_routing_cmp,
+        backend="IBM",
+        layout_algorithm="trivial",
+        pathfinder=algo,
+    )
+    elapsed = time.perf_counter() - start
+    gate_names = [ins.operation.name for ins in result.data]
+    cx_count = gate_names.count("cx")
+    routing_results[algo] = (len(result.data), result.depth(), cx_count, elapsed)
+    print(f"  Output: {len(result.data)} gates | Depth: {result.depth()} | CX gates: {cx_count} | Time: {elapsed:.4f}s")
+
+print(f"\n  ───────────────────────────────────────────────")
+print(f"               Gates   Depth   CX      Time")
+for algo, (g, d, c, t) in routing_results.items():
+    print(f"  {algo:<10}   {g:<7} {d:<7} {c:<7} {t:.4f}s")
+print(f"  ───────────────────────────────────────────────")
+print(f"  (BFS/A* find shortest pairwise paths; SABRE picks swaps with whole-circuit lookahead.)")
+print("  OK")
+
+# =============================================================
 # FULL OPTIMIZATION COMPARISON (always last)
 # =============================================================
 # This section is purely for curiosity. Regression tests and the benchmark
@@ -609,12 +693,14 @@ qc_cmp.measure([0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
 
 print(f"  Input: {qc_cmp.num_qubits} qubits, {len(qc_cmp.data)} gates")
 
-# Tessera at full optimization: convergence loop + commutative mode
-print(f"\n  --- Tessera (optimization_iterations=-1, strict=False) ---")
+# Tessera at full power: SABRE layout + SABRE routing + convergence loop + commutative mode
+print(f"\n  --- Tessera (layout=sabre, routing=sabre, optimization_iterations=-1, strict=False) ---")
 start = time.perf_counter()
 result_tessera_max = tessera_transpile(
     qc_cmp,
     backend="IBM",
+    layout_algorithm="sabre",
+    pathfinder="sabre",
     strict=False,
     optimization_iterations=-1,
 )
