@@ -113,33 +113,55 @@ def test_three_qubit_gate_raises():
     with pytest.raises(ValueError, match="Decompose to 2-qubit gates"):
         BasicSwapRouter(make_linear_map()).run(circuit)
 
-# --- BFS Tests ---
+# --- Path Finder Resolution Tests ---
 
-def test_bfs_direct_path():
-    router = BasicSwapRouter(make_linear_map())
-    assert router.bfs_path(0, 1) == [0, 1]
+def test_default_path_finder_is_bfs():
+    # Default should resolve through ROUTING_REGISTRY to bfs_strategy
+    cm = TesseraCouplingMap(4, [(0,1), (1,2), (2,3)])
+    circuit = make_circuit(
+        [TesseraInstruction("cx", [0, 2], [], [])],
+        layout={0: 0, 1: 1, 2: 2}
+    )
+    result = BasicSwapRouter(cm).run(circuit)
+    names = [ins.name for ins in result.instructions]
+    assert "swap" in names
 
-def test_bfs_longer_path():
-    router = BasicSwapRouter(make_linear_map())
-    assert router.bfs_path(0, 3) == [0, 1, 2, 3]
+def test_string_path_finder_a_star():
+    cm = TesseraCouplingMap(4, [(0,1), (1,0), (1,2), (2,1), (2,3), (3,2)])
+    circuit = make_circuit(
+        [TesseraInstruction("cx", [0, 2], [], [])],
+        layout={0: 0, 1: 1, 2: 2}
+    )
+    result = BasicSwapRouter(cm, path_finder="a_star").run(circuit)
+    names = [ins.name for ins in result.instructions]
+    assert "swap" in names
 
-def test_bfs_same_node():
-    router = BasicSwapRouter(make_linear_map())
-    assert router.bfs_path(0, 0) == [0]
+def test_string_path_finder_sabre():
+    cm = TesseraCouplingMap(4, [(0,1), (1,0), (1,2), (2,1), (2,3), (3,2)])
+    circuit = make_circuit(
+        [TesseraInstruction("cx", [0, 2], [], [])],
+        layout={0: 0, 1: 1, 2: 2}
+    )
+    result = BasicSwapRouter(cm, path_finder="sabre").run(circuit)
+    names = [ins.name for ins in result.instructions]
+    assert "swap" in names
 
-def test_bfs_no_path_raises():
-    router = BasicSwapRouter(make_linear_map())
-    with pytest.raises(ValueError, match="No path exists"):
-        router.bfs_path(3, 0)
+def test_unknown_string_path_finder_raises():
+    cm = TesseraCouplingMap(4, [(0,1), (1,2), (2,3)])
+    with pytest.raises(ValueError, match="Unknown routing strategy"):
+        BasicSwapRouter(cm, path_finder="not_a_real_algorithm")
 
-# --- Custom Path Finder Test ---
+def test_non_string_non_callable_path_finder_raises():
+    cm = TesseraCouplingMap(4, [(0,1), (1,2), (2,3)])
+    with pytest.raises(ValueError, match="must be a string or callable"):
+        BasicSwapRouter(cm, path_finder=123)
 
-def test_custom_path_finder_called_for_non_adjacent():
+def test_custom_callable_path_finder_called_for_non_adjacent():
     calls = []
     def custom_finder(start, end):
         calls.append((start, end))
         return [start, start+1, end]
-    
+
     cm = TesseraCouplingMap(4, [(0,1), (1,2), (2,3)])
     circuit = make_circuit(
         [TesseraInstruction("cx", [0, 2], [], [])],

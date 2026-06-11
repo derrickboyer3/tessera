@@ -1,0 +1,781 @@
+Imports done.
+
+============================================================
+  1. Converter Tests
+============================================================
+  from_qiskit() -> 2 qubits, 4 instructions
+  to_qiskit() -> 2 qubits, 4 instructions
+  OK
+
+============================================================
+  2. Pass Manager Test
+============================================================
+  [Tessera] Running pass: IdentityPass | Gates: 4
+  [Tessera] Finished pass: IdentityPass | Gates: 4
+  Circuit unchanged after IdentityPass: True
+  OK
+
+============================================================
+  3. Basis Translation Test
+============================================================
+  Input:  23 gates
+[Tessera] Running pass: BasisTranslationPass | Gates: 23
+[Tessera] Finished pass: BasisTranslationPass | Gates: 62
+[Tessera] Running pass: LayoutPass | Gates: 62
+[Tessera] Finished pass: LayoutPass | Gates: 62
+[Tessera] Running pass: BasicSwapRouter | Gates: 62
+[Tessera] Finished pass: BasicSwapRouter | Gates: 74
+[Tessera] Running pass: BasisTranslationPass | Gates: 74
+[Tessera] Finished pass: BasisTranslationPass | Gates: 98
+[Tessera] Running pass: RemoveBarriersPass | Gates: 98
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 98
+[Tessera] Running pass: OptimizationLoopPass | Gates: 98
+[Tessera] Running pass: CancelAdjacentPass | Gates: 98
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 98
+[Tessera] Running pass: MergeRotationsPass | Gates: 98
+[Tessera] Finished pass: MergeRotationsPass | Gates: 97
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 97
+  Output: 97 gates
+  Time:   0.0011s
+  OK
+
+============================================================
+  4. Layout Pass Test
+============================================================
+  Trivial Layout: {0: 0, 1: 1, 2: 2}
+  Dense Layout:   {0: 0, 2: 1, 1: 2}
+  q0 and q2 distance (trivial): 2
+  q0 and q2 distance (dense):   1
+  OK
+
+============================================================
+  5. Swap Router Test
+============================================================
+  Input:  cx(q0, q2) — q0 at p0, q2 at p2, not adjacent
+  Output:
+    swap [0, 1]
+    cx [1, 2]
+  OK
+
+============================================================
+  6. Full Pipeline Test
+============================================================
+  Input: 5 qubits, 20 gates
+  Initial Circuit:
+     ┌───┐                               ┌───┐          ┌─┐      
+q_0: ┤ H ├──■────────■────────■────────X─┤ X ├───────■──┤M├──────
+     ├───┤  │        │        │        │ └─┬─┘       │  └╥┘┌─┐   
+q_1: ┤ H ├──┼────■───┼───■────┼────■───┼───┼─────────■───╫─┤M├───
+     ├───┤  │    │   │   │    │    │   │   │       ┌─┴─┐ ║ └╥┘┌─┐
+q_2: ┤ H ├──┼────┼───┼───┼────┼────┼───┼───■────■──┤ X ├─╫──╫─┤M├
+     ├───┤  │  ┌─┴─┐ │ ┌─┴─┐  │  ┌─┴─┐ │  ┌─┐   │  └───┘ ║  ║ └╥┘
+q_3: ┤ T ├──┼──┤ X ├─┼─┤ Y ├──┼──┤ X ├─┼──┤M├───┼────────╫──╫──╫─
+     ├───┤┌─┴─┐└───┘ │ └───┘┌─┴─┐└───┘ │  └╥┘ ┌─┴─┐ ┌─┐  ║  ║  ║ 
+q_4: ┤ S ├┤ X ├──────■──────┤ X ├──────X───╫──┤ X ├─┤M├──╫──╫──╫─
+     └───┘└───┘             └───┘          ║  └───┘ └╥┘  ║  ║  ║ 
+c: 5/══════════════════════════════════════╩═════════╩═══╩══╩══╩═
+                                           3         4   0  1  2 
+[Tessera] Running pass: BasisTranslationPass | Gates: 20
+[Tessera] Finished pass: BasisTranslationPass | Gates: 54
+[Tessera] Running pass: LayoutPass | Gates: 54
+[Tessera] Finished pass: LayoutPass | Gates: 54
+[Tessera] Running pass: BasicSwapRouter | Gates: 54
+[Tessera] Finished pass: BasicSwapRouter | Gates: 59
+[Tessera] Running pass: BasisTranslationPass | Gates: 59
+[Tessera] Finished pass: BasisTranslationPass | Gates: 69
+[Tessera] Running pass: RemoveBarriersPass | Gates: 69
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 69
+[Tessera] Running pass: OptimizationLoopPass | Gates: 69
+[Tessera] Running pass: CancelAdjacentPass | Gates: 69
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 67
+[Tessera] Running pass: MergeRotationsPass | Gates: 67
+[Tessera] Finished pass: MergeRotationsPass | Gates: 66
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 66
+
+  Dense Layout chosen: {0: 0, 4: 1, 1: 2, 3: 3, 2: 4}
+  (q0 and q4 should be close — they interact 4 times)
+  q0<->q4 distance: 1
+  q1<->q3 distance: 1
+
+  Output: 66 gates (includes basis decomposition + swaps)
+  Final circuit:
+     ┌─────────┐┌────┐┌─────────┐                                       »
+q_0: ┤ Rz(π/2) ├┤ √X ├┤ Rz(π/2) ├──■─────────────────────────────────■──»
+     ├─────────┤└────┘└─────────┘┌─┴─┐┌─────────┐ ┌────┐┌─────────┐┌─┴─┐»
+q_1: ┤ Rz(π/2) ├─────────────────┤ X ├┤ Rz(π/2) ├─┤ √X ├┤ Rz(π/2) ├┤ X ├»
+     ├─────────┤┌────┐┌─────────┐└───┘└─────────┘ └────┘└─────────┘└───┘»
+q_2: ┤ Rz(π/2) ├┤ √X ├┤ Rz(π/2) ├──■────────────────■────────────────■──»
+     ├─────────┤└────┘└─────────┘┌─┴─┐┌──────────┐┌─┴─┐ ┌─────────┐┌─┴─┐»
+q_3: ┤ Rz(π/4) ├─────────────────┤ X ├┤ Rz(-π/2) ├┤ X ├─┤ Rz(π/2) ├┤ X ├»
+     ├─────────┤┌────┐┌─────────┐└───┘└──────────┘└───┘ └─────────┘└───┘»
+q_4: ┤ Rz(π/2) ├┤ √X ├┤ Rz(π/2) ├───────────────────────────────────────»
+     └─────────┘└────┘└─────────┘                                       »
+c: 5/═══════════════════════════════════════════════════════════════════»
+                                                                        »
+«                                 ┌───┐                         ┌───┐     »
+«q_0: ────────────────────────────┤ X ├──■──────────────────────┤ X ├─────»
+«     ┌─────────┐┌────┐┌─────────┐└─┬─┘┌─┴─┐     ┌───┐     ┌───┐└─┬─┘     »
+«q_1: ┤ Rz(π/2) ├┤ √X ├┤ Rz(π/2) ├──■──┤ X ├─────┤ X ├──■──┤ X ├──■────■──»
+«     └─────────┘└────┘└─────────┘┌───┐└───┘┌───┐└─┬─┘┌─┴─┐└─┬─┘     ┌─┴─┐»
+«q_2: ────────────────────────────┤ X ├──■──┤ X ├──■──┤ X ├──■───────┤ X ├»
+«        ┌───┐            ┌───┐   └─┬─┘┌─┴─┐└─┬─┘     └───┘          └───┘»
+«q_3: ───┤ X ├─────■──────┤ X ├─────■──┤ X ├──■───────────────────────────»
+«        └─┬─┘   ┌─┴─┐    └─┬─┘    ┌─┐ └───┘                              »
+«q_4: ─────■─────┤ X ├──────■──────┤M├────────────────────────────────────»
+«                └───┘             └╥┘                                    »
+«c: 5/══════════════════════════════╩═════════════════════════════════════»
+«                                   3                                     »
+«                                                                       »
+«q_0: ───────────────────────────────────────────────■──────────────────»
+«     ┌─────────┐┌────┐┌─────────┐┌───┐┌──────────┐┌─┴─┐┌─────────┐┌───┐»
+«q_1: ┤ Rz(π/2) ├┤ √X ├┤ Rz(π/2) ├┤ X ├┤ Rz(-π/4) ├┤ X ├┤ Rz(π/4) ├┤ X ├»
+«     └──┬───┬──┘└────┘└──┬───┬──┘└─┬─┘└──────────┘└───┘└─────────┘└─┬─┘»
+«q_2: ───┤ X ├─────■──────┤ X ├─────■────────────────────────────────■──»
+«        └─┬─┘   ┌─┴─┐    └─┬─┘    ┌─┐                                  »
+«q_3: ─────■─────┤ X ├──────■──────┤M├──────────────────────────────────»
+«                └───┘             └╥┘                                  »
+«q_4: ──────────────────────────────╫───────────────────────────────────»
+«                                   ║                                   »
+«c: 5/══════════════════════════════╩═══════════════════════════════════»
+«                                   4                                   »
+«                                                        ┌───┐          ┌─┐»
+«q_0: ──────────────■─────────────────────────────────■──┤ X ├──■───────┤M├»
+«     ┌──────────┐┌─┴─┐┌──────────┐┌────┐┌─────────┐┌─┴─┐└─┬─┘┌─┴─┐     └╥┘»
+«q_1: ┤ Rz(-π/4) ├┤ X ├┤ Rz(3π/4) ├┤ √X ├┤ Rz(π/2) ├┤ X ├──■──┤ X ├──■───╫─»
+«     ├─────────┬┘└───┘└──────────┘└────┘└─────────┘└───┘     └───┘┌─┴─┐ ║ »
+«q_2: ┤ Rz(π/4) ├──────────────────────────────────────────────────┤ X ├─╫─»
+«     └─────────┘                                                  └───┘ ║ »
+«q_3: ───────────────────────────────────────────────────────────────────╫─»
+«                                                                        ║ »
+«q_4: ───────────────────────────────────────────────────────────────────╫─»
+«                                                                        ║ »
+«c: 5/═══════════════════════════════════════════════════════════════════╩═»
+«                                                                        2 »
+«                            
+«q_0: ───────────────────────
+«     ┌─────────┐      ┌─┐   
+«q_1: ┤ Rz(π/4) ├───■──┤M├───
+«     ├─────────┴┐┌─┴─┐└╥┘┌─┐
+«q_2: ┤ Rz(-π/4) ├┤ X ├─╫─┤M├
+«     └──────────┘└───┘ ║ └╥┘
+«q_3: ──────────────────╫──╫─
+«                       ║  ║ 
+«q_4: ──────────────────╫──╫─
+«                       ║  ║ 
+«c: 5/══════════════════╩══╩═
+«                       0  1 
+
+  Time: 0.0006s
+  OK
+
+============================================================
+  7. Optimization Passes Test
+============================================================
+  Input:  11 gates (includes cancellable pairs, mergeable rotations, and a barrier)
+  Input circuit:
+        ┌───┐      ┌───┐    ░      ┌─┐   
+q_0: ───┤ H ├──────┤ H ├────░───■──┤M├───
+        ├───┤      ├───┤    ░ ┌─┴─┐└╥┘┌─┐
+q_1: ───┤ X ├──────┤ X ├────░─┤ X ├─╫─┤M├
+     ┌──┴───┴──┐┌──┴───┴──┐ ░ └┬─┬┘ ║ └╥┘
+q_2: ┤ Rz(π/4) ├┤ Rz(π/4) ├─░──┤M├──╫──╫─
+     └─────────┘└─────────┘ ░  └╥┘  ║  ║ 
+c: 3/═══════════════════════════╩═══╩══╩═
+                                2   0  1 
+[Tessera] Running pass: BasisTranslationPass | Gates: 11
+[Tessera] Finished pass: BasisTranslationPass | Gates: 15
+[Tessera] Running pass: LayoutPass | Gates: 15
+[Tessera] Finished pass: LayoutPass | Gates: 15
+[Tessera] Running pass: BasicSwapRouter | Gates: 15
+[Tessera] Finished pass: BasicSwapRouter | Gates: 15
+[Tessera] Running pass: BasisTranslationPass | Gates: 15
+[Tessera] Finished pass: BasisTranslationPass | Gates: 15
+[Tessera] Running pass: RemoveBarriersPass | Gates: 15
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 14
+[Tessera] Running pass: OptimizationLoopPass | Gates: 14
+[Tessera] Running pass: CancelAdjacentPass | Gates: 14
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 12
+[Tessera] Running pass: MergeRotationsPass | Gates: 12
+[Tessera] Finished pass: MergeRotationsPass | Gates: 10
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 10
+  Output: 10 gates
+  Output circuit:
+     ┌─────────┐┌────┐┌───────┐┌────┐┌─────────┐     ┌─┐   
+q_0: ┤ Rz(π/2) ├┤ √X ├┤ Rz(π) ├┤ √X ├┤ Rz(π/2) ├──■──┤M├───
+     └─────────┘└────┘└───────┘└────┘└─────────┘┌─┴─┐└╥┘┌─┐
+q_1: ───────────────────────────────────────────┤ X ├─╫─┤M├
+     ┌─────────┐ ┌─┐                            └───┘ ║ └╥┘
+q_2: ┤ Rz(π/2) ├─┤M├──────────────────────────────────╫──╫─
+     └─────────┘ └╥┘                                  ║  ║ 
+c: 3/═════════════╩═══════════════════════════════════╩══╩═
+                  2                                   0  1 
+  Gates:  ['rz', 'sx', 'rz', 'sx', 'rz', 'rz', 'cx', 'measure', 'measure', 'measure']
+  Barriers removed: True
+  Gate count reduced: True
+  Time: 0.0002s
+  OK
+
+  Commutative mode input: 6 gates
+  Input circuit:
+        ┌───┐      ┌───┐   ┌─┐   
+q_0: ───┤ X ├──────┤ X ├───┤M├───
+     ┌──┴───┴──┐┌──┴───┴──┐└╥┘┌─┐
+q_1: ┤ Rz(π/4) ├┤ Rz(π/4) ├─╫─┤M├
+     └─────────┘└─────────┘ ║ └╥┘
+c: 2/═══════════════════════╩══╩═
+                            0  1 
+[Tessera] Running pass: BasisTranslationPass | Gates: 6
+[Tessera] Finished pass: BasisTranslationPass | Gates: 6
+[Tessera] Running pass: LayoutPass | Gates: 6
+[Tessera] Finished pass: LayoutPass | Gates: 6
+[Tessera] Running pass: BasicSwapRouter | Gates: 6
+[Tessera] Finished pass: BasicSwapRouter | Gates: 6
+[Tessera] Running pass: BasisTranslationPass | Gates: 6
+[Tessera] Finished pass: BasisTranslationPass | Gates: 6
+[Tessera] Running pass: RemoveBarriersPass | Gates: 6
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 6
+[Tessera] Running pass: OptimizationLoopPass | Gates: 6
+[Tessera] Running pass: CancelAdjacentPass | Gates: 6
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 4
+[Tessera] Running pass: MergeRotationsPass | Gates: 4
+[Tessera] Finished pass: MergeRotationsPass | Gates: 3
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 3
+  Output: 3 gates
+  Output circuit:
+                ┌─┐   
+q_0: ───────────┤M├───
+     ┌─────────┐└╥┘┌─┐
+q_1: ┤ Rz(π/2) ├─╫─┤M├
+     └─────────┘ ║ └╥┘
+c: 2/════════════╩══╩═
+                 0  1 
+  Gate count reduced: True
+  Time: 0.0004s
+
+  Custom epsilon input: 3 gates
+  Input circuit:
+     ┌───────────┐┌────────────┐┌─┐
+  q: ┤ Rz(0.005) ├┤ Rz(-0.005) ├┤M├
+     └───────────┘└────────────┘└╥┘
+c: 1/════════════════════════════╩═
+                                 0 
+[Tessera] Running pass: BasisTranslationPass | Gates: 3
+[Tessera] Finished pass: BasisTranslationPass | Gates: 3
+[Tessera] Running pass: LayoutPass | Gates: 3
+[Tessera] Finished pass: LayoutPass | Gates: 3
+[Tessera] Running pass: BasicSwapRouter | Gates: 3
+[Tessera] Finished pass: BasicSwapRouter | Gates: 3
+[Tessera] Running pass: BasisTranslationPass | Gates: 3
+[Tessera] Finished pass: BasisTranslationPass | Gates: 3
+[Tessera] Running pass: RemoveBarriersPass | Gates: 3
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 3
+[Tessera] Running pass: OptimizationLoopPass | Gates: 3
+[Tessera] Running pass: CancelAdjacentPass | Gates: 3
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 3
+[Tessera] Running pass: MergeRotationsPass | Gates: 3
+[Tessera] Finished pass: MergeRotationsPass | Gates: 1
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 1
+  Output: 1 gates
+  Output circuit:
+     ┌─┐
+  q: ┤M├
+     └╥┘
+c: 1/═╩═
+      0 
+  Rz dropped by custom epsilon: True
+  Time: 0.0002s
+  OK
+
+============================================================
+  8. Top-Level Transpile API Test
+============================================================
+  Input: 6 gates
+  Input circuit:
+     ┌───┐          ┌─┐      
+q_0: ┤ H ├──■───────┤M├──────
+     └───┘┌─┴─┐     └╥┘┌─┐   
+q_1: ─────┤ X ├──■───╫─┤M├───
+          └───┘┌─┴─┐ ║ └╥┘┌─┐
+q_2: ──────────┤ X ├─╫──╫─┤M├
+               └───┘ ║  ║ └╥┘
+c: 3/════════════════╩══╩══╩═
+                     0  1  2 
+[Tessera] Running pass: BasisTranslationPass | Gates: 6
+[Tessera] Finished pass: BasisTranslationPass | Gates: 8
+[Tessera] Running pass: LayoutPass | Gates: 8
+[Tessera] Finished pass: LayoutPass | Gates: 8
+[Tessera] Running pass: BasicSwapRouter | Gates: 8
+[Tessera] Finished pass: BasicSwapRouter | Gates: 8
+[Tessera] Running pass: BasisTranslationPass | Gates: 8
+[Tessera] Finished pass: BasisTranslationPass | Gates: 8
+[Tessera] Running pass: RemoveBarriersPass | Gates: 8
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 8
+[Tessera] Running pass: OptimizationLoopPass | Gates: 8
+[Tessera] Running pass: CancelAdjacentPass | Gates: 8
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 8
+[Tessera] Running pass: MergeRotationsPass | Gates: 8
+[Tessera] Finished pass: MergeRotationsPass | Gates: 8
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 8
+[Tessera] Circuit transpiled in 0.00035939994268119335 seconds.
+  Output: 8 gates
+  Output circuit qubits: 3 (physical qubits used from FakeNairobiV2 topology)
+  Time: 0.0004s
+  OK
+
+  Testing with string coupling map key 'IBM_DEFAULT'...
+[Tessera] Running pass: BasisTranslationPass | Gates: 6
+[Tessera] Finished pass: BasisTranslationPass | Gates: 8
+[Tessera] Running pass: LayoutPass | Gates: 8
+[Tessera] Finished pass: LayoutPass | Gates: 8
+[Tessera] Running pass: BasicSwapRouter | Gates: 8
+[Tessera] Finished pass: BasicSwapRouter | Gates: 8
+[Tessera] Running pass: BasisTranslationPass | Gates: 8
+[Tessera] Finished pass: BasisTranslationPass | Gates: 8
+[Tessera] Running pass: RemoveBarriersPass | Gates: 8
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 8
+[Tessera] Running pass: OptimizationLoopPass | Gates: 8
+[Tessera] Running pass: CancelAdjacentPass | Gates: 8
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 8
+[Tessera] Running pass: MergeRotationsPass | Gates: 8
+[Tessera] Finished pass: MergeRotationsPass | Gates: 8
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 8
+[Tessera] Circuit transpiled in 0.0001987998839467764 seconds.
+  Output: 8 gates
+  OK
+
+  Testing with custom TesseraCouplingMap...
+[Tessera] Running pass: BasisTranslationPass | Gates: 6
+[Tessera] Finished pass: BasisTranslationPass | Gates: 8
+[Tessera] Running pass: LayoutPass | Gates: 8
+[Tessera] Finished pass: LayoutPass | Gates: 8
+[Tessera] Running pass: BasicSwapRouter | Gates: 8
+[Tessera] Finished pass: BasicSwapRouter | Gates: 8
+[Tessera] Running pass: BasisTranslationPass | Gates: 8
+[Tessera] Finished pass: BasisTranslationPass | Gates: 8
+[Tessera] Running pass: RemoveBarriersPass | Gates: 8
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 8
+[Tessera] Running pass: OptimizationLoopPass | Gates: 8
+[Tessera] Running pass: CancelAdjacentPass | Gates: 8
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 8
+[Tessera] Running pass: MergeRotationsPass | Gates: 8
+[Tessera] Finished pass: MergeRotationsPass | Gates: 8
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 8
+[Tessera] Circuit transpiled in 0.00013659987598657608 seconds.
+  Output: 8 gates
+  OK
+
+  Testing invalid backend raises ValueError...
+  Correctly raised ValueError: [Tessera]: Backend chosen does not exist in current BACKEND_REGISTRY.
+	Chosen FAKE_BACKEND
+	Try "IBM"
+  OK
+
+  Testing circuit too large raises ValueError...
+  Correctly raised ValueError: Circuit with 10 qubits is too big for coupling map with 2 qubits.
+  OK
+
+============================================================
+  9. IonQ Backend Test
+============================================================
+  Input: 4 qubits, 11 gates
+  Input circuit:
+     ┌───┐     ┌─────────┐                ┌─┐      
+q_0: ┤ H ├──■──┤ Rz(π/4) ├─────────────■──┤M├──────
+     └───┘┌─┴─┐└─────────┘┌─────────┐  │  └╥┘┌─┐   
+q_1: ─────┤ X ├─────■─────┤ Ry(π/3) ├──■───╫─┤M├───
+          └───┘   ┌─┴─┐   └─────────┘┌─┴─┐ ║ └╥┘┌─┐
+q_2: ─────────────┤ Y ├────────X─────┤ X ├─╫──╫─┤M├
+                  └───┘        │     └┬─┬┘ ║  ║ └╥┘
+q_3: ──────────────────────────X──────┤M├──╫──╫──╫─
+                                      └╥┘  ║  ║  ║ 
+c: 4/══════════════════════════════════╩═══╩══╩══╩═
+                                       3   0  1  2 
+[Tessera] Running pass: BasisTranslationPass | Gates: 11
+[Tessera] Finished pass: BasisTranslationPass | Gates: 35
+[Tessera] Running pass: LayoutPass | Gates: 35
+[Tessera] Finished pass: LayoutPass | Gates: 35
+[Tessera] Running pass: BasicSwapRouter | Gates: 35
+[Tessera] Finished pass: BasicSwapRouter | Gates: 35
+[Tessera] Running pass: BasisTranslationPass | Gates: 35
+[Tessera] Finished pass: BasisTranslationPass | Gates: 35
+[Tessera] Running pass: RemoveBarriersPass | Gates: 35
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 35
+[Tessera] Running pass: OptimizationLoopPass | Gates: 35
+[Tessera] Running pass: CancelAdjacentPass | Gates: 35
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 35
+[Tessera] Running pass: MergeRotationsPass | Gates: 35
+[Tessera] Finished pass: MergeRotationsPass | Gates: 34
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 34
+[Tessera] Circuit transpiled in 0.002391799818724394 seconds.
+
+  Output: 34 gates
+  Output gate types: {'rx', 'ry', 'cx', 'rz'}
+  All gates in IonQ basis {rx, ry, rz, cx}: True
+  SWAP gates inserted: 0 (expected 0 — IonQ Aria is all-to-all)
+  Time: 0.0024s
+
+  Testing IonQ Forte coupling map override (IONQ_FORTE, 36 qubits, all-to-all)...
+[Tessera] Running pass: BasisTranslationPass | Gates: 11
+[Tessera] Finished pass: BasisTranslationPass | Gates: 35
+[Tessera] Running pass: LayoutPass | Gates: 35
+[Tessera] Finished pass: LayoutPass | Gates: 35
+[Tessera] Running pass: BasicSwapRouter | Gates: 35
+[Tessera] Finished pass: BasicSwapRouter | Gates: 35
+[Tessera] Running pass: BasisTranslationPass | Gates: 35
+[Tessera] Finished pass: BasisTranslationPass | Gates: 35
+[Tessera] Running pass: RemoveBarriersPass | Gates: 35
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 35
+[Tessera] Running pass: OptimizationLoopPass | Gates: 35
+[Tessera] Running pass: CancelAdjacentPass | Gates: 35
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 35
+[Tessera] Running pass: MergeRotationsPass | Gates: 35
+[Tessera] Finished pass: MergeRotationsPass | Gates: 34
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 34
+[Tessera] Circuit transpiled in 0.0027966999914497137 seconds.
+  Output: 34 gates
+  Time: 0.0028s
+  OK
+
+============================================================
+  10. Rigetti Backend Test
+============================================================
+  Input: 3 qubits, 8 gates
+  Input circuit:
+        ┌───┐                 ┌─┐   
+q_0: ───┤ H ├─────■──────X────┤M├───
+        └───┘   ┌─┴─┐    │ ┌─┐└╥┘   
+q_1: ───────────┤ X ├─■──┼─┤M├─╫────
+     ┌─────────┐└───┘ │  │ └╥┘ ║ ┌─┐
+q_2: ┤ Ry(π/3) ├──────■──X──╫──╫─┤M├
+     └─────────┘            ║  ║ └╥┘
+c: 3/═══════════════════════╩══╩══╩═
+                            1  0  2 
+[Tessera] Running pass: BasisTranslationPass | Gates: 8
+[Tessera] Finished pass: BasisTranslationPass | Gates: 38
+[Tessera] Running pass: LayoutPass | Gates: 38
+[Tessera] Finished pass: LayoutPass | Gates: 38
+[Tessera] Running pass: BasicSwapRouter | Gates: 38
+[Tessera] Finished pass: BasicSwapRouter | Gates: 40
+[Tessera] Running pass: BasisTranslationPass | Gates: 40
+[Tessera] Finished pass: BasisTranslationPass | Gates: 80
+[Tessera] Running pass: RemoveBarriersPass | Gates: 80
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 80
+[Tessera] Running pass: OptimizationLoopPass | Gates: 80
+[Tessera] Running pass: CancelAdjacentPass | Gates: 80
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 80
+[Tessera] Running pass: MergeRotationsPass | Gates: 80
+[Tessera] Finished pass: MergeRotationsPass | Gates: 80
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 80
+[Tessera] Circuit transpiled in 0.0006593998987227678 seconds.
+
+  Output: 80 gates (Ankaa-9Q-3, 9 qubits)
+  Output gate types: {'rx', 'cz', 'rz'}
+  All gates in Rigetti basis {rx, rz, cz}: True
+  CX decomposed to CZ-based sequence: True
+  Time: 0.0007s
+
+  Testing Rigetti Ankaa-2 default map (RIGETTI_ANKAA, 84 qubits)...
+[Tessera] Running pass: BasisTranslationPass | Gates: 8
+[Tessera] Finished pass: BasisTranslationPass | Gates: 38
+[Tessera] Running pass: LayoutPass | Gates: 38
+[Tessera] Finished pass: LayoutPass | Gates: 38
+[Tessera] Running pass: BasicSwapRouter | Gates: 38
+[Tessera] Finished pass: BasicSwapRouter | Gates: 40
+[Tessera] Running pass: BasisTranslationPass | Gates: 40
+[Tessera] Finished pass: BasisTranslationPass | Gates: 80
+[Tessera] Running pass: RemoveBarriersPass | Gates: 80
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 80
+[Tessera] Running pass: OptimizationLoopPass | Gates: 80
+[Tessera] Running pass: CancelAdjacentPass | Gates: 80
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 80
+[Tessera] Running pass: MergeRotationsPass | Gates: 80
+[Tessera] Finished pass: MergeRotationsPass | Gates: 80
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 80
+[Tessera] Circuit transpiled in 0.04376420006155968 seconds.
+  Output: 80 gates
+  All gates in Rigetti basis: True
+  Time: 0.0438s
+  OK
+
+============================================================
+  11. Commutative Mode Deep Dive
+============================================================
+  Input: 19 gates
+  Input circuit:
+        ┌───┐   ┌───┐                           ┌─┐              
+q_0: ───┤ H ├───┤ H ├─────■──────────■──────────┤M├──────────────
+        ├───┤   ├───┤   ┌─┴─┐      ┌─┴─┐        └╥┘┌─┐           
+q_1: ───┤ X ├───┤ X ├───┤ X ├──────┤ X ├─────────╫─┤M├───────────
+        ├───┤   └───┘┌──┴───┴──┐┌──┴───┴──┐      ║ └╥┘┌─┐        
+q_2: ───┤ H ├─────■──┤ Rz(π/8) ├┤ Rz(π/8) ├──────╫──╫─┤M├────────
+     ┌──┴───┴──┐┌─┴─┐└──┬───┬──┘└──┬───┬──┘┌───┐ ║  ║ └╥┘┌───┐┌─┐
+q_3: ┤ Rz(π/4) ├┤ X ├───┤ X ├──────┤ X ├───┤ H ├─╫──╫──╫─┤ H ├┤M├
+     └─────────┘└───┘   └───┘      └───┘   └───┘ ║  ║  ║ └───┘└╥┘
+c: 4/════════════════════════════════════════════╩══╩══╩═══════╩═
+                                                 0  1  2       3 
+
+  --- Strict mode (strict=True) ---
+[Tessera] Running pass: BasisTranslationPass | Gates: 19
+[Tessera] Finished pass: BasisTranslationPass | Gates: 29
+[Tessera] Running pass: LayoutPass | Gates: 29
+[Tessera] Finished pass: LayoutPass | Gates: 29
+[Tessera] Running pass: BasicSwapRouter | Gates: 29
+[Tessera] Finished pass: BasicSwapRouter | Gates: 29
+[Tessera] Running pass: BasisTranslationPass | Gates: 29
+[Tessera] Finished pass: BasisTranslationPass | Gates: 29
+[Tessera] Running pass: RemoveBarriersPass | Gates: 29
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 29
+[Tessera] Running pass: OptimizationLoopPass | Gates: 29
+[Tessera] Running pass: CancelAdjacentPass | Gates: 29
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 27
+[Tessera] Running pass: MergeRotationsPass | Gates: 27
+[Tessera] Finished pass: MergeRotationsPass | Gates: 25
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 25
+[Tessera] Circuit transpiled in 0.00035370001569390297 seconds.
+  Output: 25 gates | Time: 0.0004s
+
+  --- Commutative mode (strict=False) ---
+[Tessera] Running pass: BasisTranslationPass | Gates: 19
+[Tessera] Finished pass: BasisTranslationPass | Gates: 29
+[Tessera] Running pass: LayoutPass | Gates: 29
+[Tessera] Finished pass: LayoutPass | Gates: 29
+[Tessera] Running pass: BasicSwapRouter | Gates: 29
+[Tessera] Finished pass: BasicSwapRouter | Gates: 29
+[Tessera] Running pass: BasisTranslationPass | Gates: 29
+[Tessera] Finished pass: BasisTranslationPass | Gates: 29
+[Tessera] Running pass: RemoveBarriersPass | Gates: 29
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 29
+[Tessera] Running pass: OptimizationLoopPass | Gates: 29
+[Tessera] Running pass: CancelAdjacentPass | Gates: 29
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 23
+[Tessera] Running pass: MergeRotationsPass | Gates: 23
+[Tessera] Finished pass: MergeRotationsPass | Gates: 20
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 20
+[Tessera] Circuit transpiled in 0.0002709000837057829 seconds.
+  Output: 20 gates | Time: 0.0003s
+
+  Strict output gates:      25
+  Commutative output gates: 20
+  Reduction from commutation: 5 gates
+  OK
+
+============================================================
+  12. Optimization Loop Test
+============================================================
+  Input: 24 gates
+  Input circuit:
+     ┌──────────┐┌──────────┐┌──────────┐┌──────────┐┌──────────┐┌──────────┐»
+q_0: ┤ Rz(π/16) ├┤ Rz(π/16) ├┤ Rz(π/16) ├┤ Rz(π/16) ├┤ Rz(π/16) ├┤ Rz(π/16) ├»
+     └──┬───┬───┘└──┬───┬───┘└──┬───┬───┘└──┬───┬───┘└──┬───┬───┘└──────────┘»
+q_1: ───┤ H ├───────┤ X ├───────┤ X ├───────┤ H ├───────┤ H ├─────────■──────»
+        └───┘       └───┘       └───┘       └───┘       └───┘       ┌─┴─┐    »
+q_2: ───────────────────────────────────────────────────────────────┤ X ├────»
+                                                                    └───┘    »
+c: 3/════════════════════════════════════════════════════════════════════════»
+                                                                             »
+«     ┌──────────┐┌──────────┐     ┌─┐                                    »
+«q_0: ┤ Rz(π/16) ├┤ Rz(π/16) ├─────┤M├────────────────────────────────────»
+«     └──────────┘└──────────┘     └╥┘           ┌─┐                      »
+«q_1: ──────────────────────────■───╫────────────┤M├──────────────────────»
+«        ┌───┐       ┌───┐    ┌─┴─┐ ║ ┌─────────┐└╥┘┌─────────┐┌─────────┐»
+«q_2: ───┤ H ├───────┤ H ├────┤ X ├─╫─┤ Rz(π/8) ├─╫─┤ Rz(π/8) ├┤ Rz(π/8) ├»
+«        └───┘       └───┘    └───┘ ║ └─────────┘ ║ └─────────┘└─────────┘»
+«c: 3/══════════════════════════════╩═════════════╩═══════════════════════»
+«                                   0             1                       »
+«                   
+«q_0: ──────────────
+«                   
+«q_1: ──────────────
+«     ┌─────────┐┌─┐
+«q_2: ┤ Rz(π/8) ├┤M├
+«     └─────────┘└╥┘
+«c: 3/════════════╩═
+«                 2 
+
+  --- optimization_iterations=1 (default, single pass) ---
+[Tessera] Running pass: BasisTranslationPass | Gates: 24
+[Tessera] Finished pass: BasisTranslationPass | Gates: 34
+[Tessera] Running pass: LayoutPass | Gates: 34
+[Tessera] Finished pass: LayoutPass | Gates: 34
+[Tessera] Running pass: BasicSwapRouter | Gates: 34
+[Tessera] Finished pass: BasicSwapRouter | Gates: 34
+[Tessera] Running pass: BasisTranslationPass | Gates: 34
+[Tessera] Finished pass: BasisTranslationPass | Gates: 34
+[Tessera] Running pass: RemoveBarriersPass | Gates: 34
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 34
+[Tessera] Running pass: OptimizationLoopPass | Gates: 34
+[Tessera] Running pass: CancelAdjacentPass | Gates: 34
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 32
+[Tessera] Running pass: MergeRotationsPass | Gates: 32
+[Tessera] Finished pass: MergeRotationsPass | Gates: 23
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 23
+[Tessera] Circuit transpiled in 0.0003154000733047724 seconds.
+  Output: 23 gates | Time: 0.0003s
+
+  --- optimization_iterations=5 (fixed loop) ---
+[Tessera] Running pass: BasisTranslationPass | Gates: 24
+[Tessera] Finished pass: BasisTranslationPass | Gates: 34
+[Tessera] Running pass: LayoutPass | Gates: 34
+[Tessera] Finished pass: LayoutPass | Gates: 34
+[Tessera] Running pass: BasicSwapRouter | Gates: 34
+[Tessera] Finished pass: BasicSwapRouter | Gates: 34
+[Tessera] Running pass: BasisTranslationPass | Gates: 34
+[Tessera] Finished pass: BasisTranslationPass | Gates: 34
+[Tessera] Running pass: RemoveBarriersPass | Gates: 34
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 34
+[Tessera] Running pass: OptimizationLoopPass | Gates: 34
+[Tessera] Running pass: CancelAdjacentPass | Gates: 34
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 32
+[Tessera] Running pass: MergeRotationsPass | Gates: 32
+[Tessera] Finished pass: MergeRotationsPass | Gates: 23
+[Tessera] Running pass: CancelAdjacentPass | Gates: 23
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 23
+[Tessera] Running pass: MergeRotationsPass | Gates: 23
+[Tessera] Finished pass: MergeRotationsPass | Gates: 20
+[Tessera] Running pass: CancelAdjacentPass | Gates: 20
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 20
+[Tessera] Running pass: MergeRotationsPass | Gates: 20
+[Tessera] Finished pass: MergeRotationsPass | Gates: 19
+[Tessera] Running pass: CancelAdjacentPass | Gates: 19
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 19
+[Tessera] Running pass: MergeRotationsPass | Gates: 19
+[Tessera] Finished pass: MergeRotationsPass | Gates: 19
+[Tessera] Running pass: CancelAdjacentPass | Gates: 19
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 19
+[Tessera] Running pass: MergeRotationsPass | Gates: 19
+[Tessera] Finished pass: MergeRotationsPass | Gates: 19
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 19
+[Tessera] Circuit transpiled in 0.00030850013718008995 seconds.
+  Output: 19 gates | Time: 0.0003s
+
+  --- optimization_iterations=-1 (run until convergence) ---
+[Tessera] Running pass: BasisTranslationPass | Gates: 24
+[Tessera] Finished pass: BasisTranslationPass | Gates: 34
+[Tessera] Running pass: LayoutPass | Gates: 34
+[Tessera] Finished pass: LayoutPass | Gates: 34
+[Tessera] Running pass: BasicSwapRouter | Gates: 34
+[Tessera] Finished pass: BasicSwapRouter | Gates: 34
+[Tessera] Running pass: BasisTranslationPass | Gates: 34
+[Tessera] Finished pass: BasisTranslationPass | Gates: 34
+[Tessera] Running pass: RemoveBarriersPass | Gates: 34
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 34
+[Tessera] Running pass: OptimizationLoopPass | Gates: 34
+[Tessera] Running pass: CancelAdjacentPass | Gates: 34
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 32
+[Tessera] Running pass: MergeRotationsPass | Gates: 32
+[Tessera] Finished pass: MergeRotationsPass | Gates: 23
+[Tessera] Running pass: CancelAdjacentPass | Gates: 23
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 23
+[Tessera] Running pass: MergeRotationsPass | Gates: 23
+[Tessera] Finished pass: MergeRotationsPass | Gates: 20
+[Tessera] Running pass: CancelAdjacentPass | Gates: 20
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 20
+[Tessera] Running pass: MergeRotationsPass | Gates: 20
+[Tessera] Finished pass: MergeRotationsPass | Gates: 19
+[Tessera] Running pass: CancelAdjacentPass | Gates: 19
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 19
+[Tessera] Running pass: MergeRotationsPass | Gates: 19
+[Tessera] Finished pass: MergeRotationsPass | Gates: 19
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 19
+[Tessera] Circuit transpiled in 0.0002669000532478094 seconds.
+  Output: 19 gates | Time: 0.0003s
+
+  iterations=1:  23 gates
+  iterations=5:  19 gates
+  iterations=-1: 19 gates (converged)
+  Extra reduction from looping: 4 gates
+
+  --- optimization_iterations=-1 with max_iterations=2 (cap fires early) ---
+[Tessera] Running pass: BasisTranslationPass | Gates: 24
+[Tessera] Finished pass: BasisTranslationPass | Gates: 34
+[Tessera] Running pass: LayoutPass | Gates: 34
+[Tessera] Finished pass: LayoutPass | Gates: 34
+[Tessera] Running pass: BasicSwapRouter | Gates: 34
+[Tessera] Finished pass: BasicSwapRouter | Gates: 34
+[Tessera] Running pass: BasisTranslationPass | Gates: 34
+[Tessera] Finished pass: BasisTranslationPass | Gates: 34
+[Tessera] Running pass: RemoveBarriersPass | Gates: 34
+[Tessera] Finished pass: RemoveBarriersPass | Gates: 34
+[Tessera] Running pass: OptimizationLoopPass | Gates: 34
+[Tessera] Running pass: CancelAdjacentPass | Gates: 34
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 32
+[Tessera] Running pass: MergeRotationsPass | Gates: 32
+[Tessera] Finished pass: MergeRotationsPass | Gates: 23
+[Tessera] Running pass: CancelAdjacentPass | Gates: 23
+[Tessera] Finished pass: CancelAdjacentPass | Gates: 23
+[Tessera] Running pass: MergeRotationsPass | Gates: 23
+[Tessera] Finished pass: MergeRotationsPass | Gates: 20
+[Tessera] Reached maximum iterations (2) without convergence. Stopping optimization loop.
+[Tessera] Finished pass: OptimizationLoopPass | Gates: 20
+[Tessera] Circuit transpiled in 0.00023790006525814533 seconds.
+  Output: 20 gates | Time: 0.0002s
+  (Should print 'Reached maximum iterations' notice above if cap was hit)
+  OK
+
+============================================================
+  13. Layout Algorithm Comparison
+============================================================
+  Input: 5 qubits, 14 gates
+  Hot pairs: q0<->q4 (4x), q1<->q3 (3x)
+
+  --- layout_algorithm="trivial" ---
+  Output: 29 gates | Depth: 21 | CX gates: 24 | Time: 0.0002s
+
+  --- layout_algorithm="dense" ---
+  Output: 11 gates | Depth: 6 | CX gates: 6 | Time: 0.0003s
+
+  --- layout_algorithm="sabre" ---
+  Output: 11 gates | Depth: 6 | CX gates: 6 | Time: 0.0007s
+
+  ───────────────────────────────────────────────
+               Gates   Depth   CX      Time
+  trivial      29      21      24      0.0002s
+  dense        11      6       6       0.0003s
+  sabre        11      6       6       0.0007s
+  ───────────────────────────────────────────────
+  (Fewer SWAPs = layout did a better job placing interacting qubits adjacent.)
+  OK
+
+============================================================
+  14. Routing Algorithm Comparison
+============================================================
+  Input: 5 qubits, 11 gates
+  Layout fixed to "trivial" so routing is the only variable.
+
+  --- pathfinder="bfs" ---
+  Output: 44 gates | Depth: 37 | CX gates: 39 | Time: 0.0003s
+
+  --- pathfinder="a_star" ---
+  Output: 44 gates | Depth: 37 | CX gates: 39 | Time: 0.0004s
+
+  --- pathfinder="sabre" ---
+  Output: 24 gates | Depth: 16 | CX gates: 19 | Time: 0.0005s
+
+  ───────────────────────────────────────────────
+               Gates   Depth   CX      Time
+  bfs          44      37      39      0.0003s
+  a_star       44      37      39      0.0004s
+  sabre        24      16      19      0.0005s
+  ───────────────────────────────────────────────
+  (BFS/A* find shortest pairwise paths; SABRE picks swaps with whole-circuit lookahead.)
+  OK
+
+============================================================
+  Full Optimization Comparison — Tessera (max) vs Qiskit (level 3)
+============================================================
+  Input: 5 qubits, 31 gates
+
+  --- Tessera (layout=sabre, routing=sabre, optimization_iterations=-1, strict=False) ---
+  Output: 65 gates | Depth: 49 | Time: 0.0051s
+
+  --- Qiskit (optimization_level=3) ---
+  Output: 50 gates | Depth: 32 | Time: 0.0530s
+
+  ───────────────────────────────────────────────
+                    Tessera     Qiskit
+  Output gates:     65         50
+  Circuit depth:    49         32
+  Transpile time:   0.0051s    0.0530s
+  ───────────────────────────────────────────────
+  (Curiosity-only; regression suite locks default vs default, not max vs max.)
+  OK

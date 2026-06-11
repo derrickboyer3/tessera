@@ -78,21 +78,32 @@ not application code.
 | gate_library.py                           | 100%   |                                              |
 | converters.py                             | 100%   |                                              |
 | pass_manager.py                           | 100%   |                                              |
-| passes/identity_pass.py                   | 100%   |                                              |
 | transpiler_pass.py                        | 89%    | Abstract method miss is expected             |
-| backends/basis_gate_sets.py               | 100%   |                                              |
-| backends/decomposition_maps.py            | 100%   |                                              |
-| passes/basis_translation_pass.py          | 100%   |                                              |
 | transpiler.py                             | 100%   |                                              |
 | hardware/coupling_map.py                  | 100%   |                                              |
-| passes/trivial_pass.py                    | 100%   |                                              |
-| passes/dense_layout_pass.py               | 100%   |                                              |
+| api/transpile.py                          | 100%   |                                              |
+| backends/basis_gate_sets.py               | 100%   |                                              |
+| backends/decomposition_maps.py            | 100%   |                                              |
+| backends/backend_registry.py              | 100%   |                                              |
+| backends/coupling_maps.py                 | 100%   |                                              |
+| passes/identity_pass.py                   | 100%   |                                              |
+| passes/basis_translation_pass.py          | 100%   |                                              |
+| passes/layout_pass.py                     | 100%   |                                              |
 | passes/basic_swap_router.py               | 100%   |                                              |
 | passes/cancel_adjacent_pass.py            | 100%   |                                              |
 | passes/merge_rotations_pass.py            | 100%   |                                              |
 | passes/remove_barriers_pass.py            | 100%   |                                              |
 | passes/optimization_loop_pass.py          | 100%   |                                              |
-| api/transpile.py                          | 100%   |                                              |
+| passes/dense_layout_pass.py               | 100%   | Deprecation shim — delegates to LayoutPass   |
+| layouts/dense.py                          | 100%   |                                              |
+| layouts/sabre.py                          | 100%   |                                              |
+| layouts/trivial.py                        | 100%   |                                              |
+| layouts/layout_registry.py                | 100%   |                                              |
+| routing/bfs.py                            | 100%   |                                              |
+| routing/a_star.py                         | 100%   |                                              |
+| routing/sabre.py                          | 100%   |                                              |
+| routing/pairwise.py                       | 100%   |                                              |
+| routing/routing_registry.py               | 100%   |                                              |
 
 ---
 
