@@ -48,7 +48,13 @@ def from_qiskit(qc: QuantumCircuit) -> TesseraCircuit:
     return tessera_circuit
 
 def to_qiskit(tc: TesseraCircuit):
-    physical_qubits = max(tc.layout.values()) + 1 if tc.layout else tc.num_qubits
+    # Size the output register to cover both the layout's max physical qubit
+    # AND any qubit referenced in the routed instructions. A sparse layout
+    # (e.g. trivial layout on a circuit smaller than the coupling map) can
+    # leave the router using physical qubits not in the layout dict.
+    layout_max = max(tc.layout.values()) + 1 if tc.layout else tc.num_qubits
+    instruction_max = max((q for ins in tc.instructions for q in ins.qubits), default=-1) + 1
+    physical_qubits = max(layout_max, instruction_max)
     qc = QuantumCircuit(physical_qubits, tc.num_clbits)
 
     for ins in tc.instructions:

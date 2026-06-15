@@ -21,13 +21,25 @@ Tessera/
 │   │   └── coupling_map.py         # TesseraCouplingMap — directed graph over networkx
 │   ├── passes/
 │   │   ├── basis_translation_pass.py
-│   │   ├── dense_layout_pass.py
-│   │   ├── basic_swap_router.py
+│   │   ├── layout_pass.py             # Resolves layout algorithm via LAYOUT_REGISTRY
+│   │   ├── basic_swap_router.py       # Resolves routing strategy via ROUTING_REGISTRY
 │   │   ├── remove_barriers_pass.py
 │   │   ├── cancel_adjacent_pass.py
 │   │   ├── merge_rotations_pass.py
-│   │   ├── trivial_pass.py
-│   │   └── identity_pass.py
+│   │   ├── optimization_loop_pass.py
+│   │   ├── identity_pass.py
+│   │   └── dense_layout_pass.py       # Deprecated shim — delegates to LayoutPass("dense")
+│   ├── layouts/
+│   │   ├── dense.py                   # Greedy interaction-frequency placement
+│   │   ├── sabre.py                   # SABRE forward-backward trial-routing layout
+│   │   ├── trivial.py                 # Direct logical→physical mapping
+│   │   └── layout_registry.py         # LAYOUT_REGISTRY: name -> layout algorithm
+│   ├── routing/
+│   │   ├── pairwise.py                # Shared SWAP-insertion engine for pairwise routers
+│   │   ├── bfs.py                     # BFS pairwise pathfinder
+│   │   ├── a_star.py                  # A* pairwise pathfinder
+│   │   ├── sabre.py                   # SABRE whole-circuit swap selection
+│   │   └── routing_registry.py        # ROUTING_REGISTRY: name -> routing strategy
 │   ├── circuit.py              # TesseraCircuit dataclass
 │   ├── instruction.py          # TesseraInstruction dataclass
 │   ├── converters.py           # from_qiskit() and to_qiskit()
@@ -109,10 +121,14 @@ cm = TesseraCouplingMap(3, [(0, 1), (1, 0), (1, 2), (2, 1)])
 transpiled = transpile(
     qc,
     backend="IBM",
-    coupling_map=cm,       # or pass a string key like "IBM_BRISBANE"
-    strict=False,          # use commutative optimization mode
-    epsilon=1e-6,          # custom rotation merge threshold
-    debug_on=True          # print per-pass gate counts
+    coupling_map=cm,             # or pass a string key like "IBM_BRISBANE"
+    layout_algorithm="sabre",    # "dense" (default) | "sabre" | "trivial" | custom callable
+    pathfinder="a_star",         # "bfs" (default) | "a_star" | "sabre" | custom pairwise callable
+    strict=False,                # use commutative optimization mode
+    epsilon=1e-6,                # custom rotation merge threshold
+    optimization_iterations=-1,  # loop optimization passes until gate count converges
+    max_iterations=500,          # safety cap for convergence mode (default 1000)
+    debug_on=True                # print per-pass gate counts
 )
 ```
 
@@ -121,18 +137,35 @@ transpiled = transpile(
 ## Transpiler Pipeline
 
 ```
-BasisTranslation -> DenseLayout -> BasicSwapRouter -> BasisTranslation2 -> RemoveBarriers -> CancelAdjacent -> MergeRotations
+BasisTranslation -> LayoutPass -> BasicSwapRouter -> BasisTranslation2 -> RemoveBarriers -> OptimizationLoop(CancelAdjacent -> MergeRotations)
 ```
 
 | Stage | Pass | Description |
 |-------|------|-------------|
 | 1 | `BasisTranslationPass` | Decomposes non-basis gates into backend-supported gate set |
-| 2 | `DenseLayoutPass` | Greedily maps logical qubits to physical qubits based on interaction frequency |
-| 3 | `BasicSwapRouter` | Applies layout and inserts SWAP gates for non-adjacent two-qubit gates |
+| 2 | `LayoutPass` | Maps logical qubits to physical qubits using the chosen algorithm (`"dense"` default, also `"sabre"`, `"trivial"`, or a custom callable) — resolves through `LAYOUT_REGISTRY` |
+| 3 | `BasicSwapRouter` | Inserts SWAPs for non-adjacent two-qubit gates using the chosen routing strategy (`"bfs"` default, also `"a_star"`, `"sabre"`, or a custom pairwise callable) — resolves through `ROUTING_REGISTRY` |
 | 4 | `BasisTranslationPass` | Re-runs basis translation to decompose any SWAP gates inserted by routing |
 | 5 | `RemoveBarriersPass` | Strips barrier instructions before optimization |
-| 6 | `CancelAdjacentPass` | Removes pairs of adjacent self-inverse gates (X X, H H, CX CX, etc.) |
-| 7 | `MergeRotationsPass` | Combines consecutive rotation gates (Rz(a) Rz(b) -> Rz(a+b)) |
+| 6 | `OptimizationLoopPass` | Wraps the optimization passes and runs them either a fixed number of iterations or until gate count converges |
+| 6a | &nbsp;&nbsp;`CancelAdjacentPass` | Removes pairs of adjacent self-inverse gates (X X, H H, CX CX, etc.) |
+| 6b | &nbsp;&nbsp;`MergeRotationsPass` | Combines consecutive rotation gates (Rz(a) Rz(b) -> Rz(a+b)) |
+
+### Layout Algorithms (`LAYOUT_REGISTRY`)
+
+| Key | File | Description |
+|-----|------|-------------|
+| `dense` | `tessera/layouts/dense.py` | Greedy interaction-frequency placement. Default. |
+| `sabre` | `tessera/layouts/sabre.py` | Forward-backward trial routing to discover an initial mapping. Better routing efficiency on circuits with non-trivial connectivity. |
+| `trivial` | `tessera/layouts/trivial.py` | Direct logical→physical mapping (logical *i* → physical *i*). Useful as a baseline. |
+
+### Routing Algorithms (`ROUTING_REGISTRY`)
+
+| Key | File | Description |
+|-----|------|-------------|
+| `bfs` | `tessera/routing/bfs.py` + `pairwise.py` | Breadth-first pairwise pathfinding. Default. |
+| `a_star` | `tessera/routing/a_star.py` + `pairwise.py` | A* pairwise pathfinding with hop-distance heuristic. Architecture-ready for noise-aware weighted edges; matches BFS performance on unweighted maps today. |
+| `sabre` | `tessera/routing/sabre.py` | Whole-circuit heuristic swap selection with front-layer lookahead. Often produces fewer SWAPs on dense circuits. |
 
 ---
 
@@ -244,7 +277,9 @@ class MyPass(TranspilerPass):
 - [x] Benchmark suite vs Qiskit
 - [x] Regression test suite
 - [x] IonQ and Rigetti backend support
-- [ ] Commutative gate rewriting (improve CancelAdjacentPass)
-- [ ] Multi-pass optimization loop
-- [ ] Noise-aware layout
-- [ ] SABRE or A* routing algorithm
+- [x] Commutative gate rewriting (improve CancelAdjacentPass)
+- [x] Multi-pass optimization loop
+- [x] Layout and routing registries with pluggable algorithms
+- [x] SABRE layout (forward-backward trial routing)
+- [x] A* and SABRE routing algorithms
+- [ ] Noise-aware layout (weighted coupling map for A*/SABRE)
